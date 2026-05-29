@@ -67,7 +67,6 @@ export async function GET(request: Request) {
   }
 
   // Settings (porcentaje) se leen con service role (RLS admin-only)
-  const admin = createSupabaseAdminClient();
   const { data: settings, error: sErr } = await admin
     .from("payment_settings")
     .select("deposit_percent")
