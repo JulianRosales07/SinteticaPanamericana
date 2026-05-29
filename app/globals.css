@@ -167,6 +167,17 @@ input:focus, textarea:focus, select:focus {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #bccabb;
+  border-radius: 10px;
+}
 .drag-handle {
   cursor: grab;
 }

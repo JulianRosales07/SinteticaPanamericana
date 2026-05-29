@@ -25,6 +25,14 @@ export async function GET(request: Request) {
     );
   }
 
+  // Limpiar reservas pending_payment expiradas (más de 15 minutos)
+  const admin = createSupabaseAdminClient();
+  await admin
+    .from("reservations")
+    .update({ status: "cancelled" })
+    .eq("status", "pending_payment")
+    .lt("created_at", new Date(Date.now() - 15 * 60 * 1000).toISOString());
+
   // Usuario logueado (para validar que la reserva es suya)
   const supabase = await createSupabaseServerClient();
   const { data: authData } = await supabase.auth.getUser();

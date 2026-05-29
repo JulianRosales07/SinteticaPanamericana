@@ -80,7 +80,7 @@ create table if not exists public.reservations (
   date date not null,
   hour smallint not null check (hour between 6 and 23),
   price_cop integer not null,
-  status text not null default 'active' check (status in ('active','cancelled')),
+  status text not null default 'active' check (status in ('active','cancelled','pending_payment')),
   confirmed boolean not null default false,
   confirmed_at timestamptz,
   attended boolean not null default false,
