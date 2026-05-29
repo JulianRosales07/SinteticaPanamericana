@@ -301,12 +301,13 @@ export default function AdminProductosPage() {
 
       {/* ─── Tabla de productos ─── */}
       <div className="overflow-hidden rounded-3xl border border-zinc-200">
-        <div className="grid grid-cols-12 gap-2 bg-zinc-50 px-5 py-4 text-xs font-semibold uppercase tracking-wide text-zinc-600">
-          <div className="col-span-4">Producto</div>
+        {/* Header - solo visible en desktop */}
+        <div className="hidden lg:grid grid-cols-12 gap-2 bg-zinc-50 px-5 py-4 text-xs font-semibold uppercase tracking-wide text-zinc-600">
+          <div className="col-span-3">Producto</div>
           <div className="col-span-2">Cantidad</div>
-          <div className="col-span-3">Precio</div>
+          <div className="col-span-2">Precio</div>
           <div className="col-span-1">Activo</div>
-          <div className="col-span-2 text-right">Acciones</div>
+          <div className="col-span-4 text-right">Acciones</div>
         </div>
 
         {rows.length === 0 ? (
@@ -314,66 +315,138 @@ export default function AdminProductosPage() {
         ) : (
           <div className="divide-y divide-zinc-200 bg-white">
             {rows.map((r) => (
-              <div key={r.id} className="grid grid-cols-12 items-center gap-2 px-5 py-4 text-sm">
-                <div className="col-span-4">
-                  <input
-                    defaultValue={r.name}
-                    onBlur={(e) => {
-                      const v = e.target.value.trim();
-                      if (v && v !== r.name) updateProduct(r.id, { name: v });
-                    }}
-                    className="w-full rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm outline-none"
-                  />
-                  <div className="mt-1 font-mono text-[11px] text-zinc-500">#{r.id}</div>
+              <div key={r.id} className="px-5 py-4">
+                {/* Desktop: grid layout */}
+                <div className="hidden lg:grid grid-cols-12 items-center gap-2 text-sm">
+                  <div className="col-span-3">
+                    <input
+                      defaultValue={r.name}
+                      onBlur={(e) => {
+                        const v = e.target.value.trim();
+                        if (v && v !== r.name) updateProduct(r.id, { name: v });
+                      }}
+                      className="w-full rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm outline-none"
+                    />
+                    <div className="mt-1 font-mono text-[11px] text-zinc-500">#{r.id}</div>
+                  </div>
+                  <div className="col-span-2">
+                    <input
+                      type="number"
+                      defaultValue={r.stock_qty}
+                      onBlur={(e) => {
+                        const v = Number(e.target.value);
+                        if (!Number.isNaN(v) && v !== r.stock_qty) updateProduct(r.id, { stock_qty: v });
+                      }}
+                      className="w-full rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm outline-none"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <input
+                      type="number"
+                      defaultValue={r.price_cop}
+                      onBlur={(e) => {
+                        const v = Number(e.target.value);
+                        if (!Number.isNaN(v) && v !== r.price_cop) updateProduct(r.id, { price_cop: v });
+                      }}
+                      className="w-full rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm outline-none"
+                    />
+                    <div className="mt-1 text-xs text-zinc-500">{formatCOP(r.price_cop)}</div>
+                  </div>
+                  <div className="col-span-1">
+                    <input
+                      type="checkbox"
+                      checked={r.active}
+                      onChange={(e) => updateProduct(r.id, { active: e.target.checked })}
+                    />
+                  </div>
+                  <div className="col-span-4 flex justify-end gap-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100"
+                      onClick={() => deleteProduct(r.id)}
+                      title="Desactivar producto"
+                    >
+                      <FiTrash2 /> Desactivar
+                    </Button>
+                    <button
+                      type="button"
+                      className="text-[11px] text-red-500 hover:text-red-700 underline font-semibold px-2"
+                      onClick={() => setDeleteModal({ id: r.id, name: r.name })}
+                      title="Eliminar permanentemente"
+                    >
+                      Eliminar
+                    </button>
+                  </div>
                 </div>
-                <div className="col-span-2">
-                  <input
-                    type="number"
-                    defaultValue={r.stock_qty}
-                    onBlur={(e) => {
-                      const v = Number(e.target.value);
-                      if (!Number.isNaN(v) && v !== r.stock_qty) updateProduct(r.id, { stock_qty: v });
-                    }}
-                    className="w-full rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm outline-none"
-                  />
-                </div>
-                <div className="col-span-3">
-                  <input
-                    type="number"
-                    defaultValue={r.price_cop}
-                    onBlur={(e) => {
-                      const v = Number(e.target.value);
-                      if (!Number.isNaN(v) && v !== r.price_cop) updateProduct(r.id, { price_cop: v });
-                    }}
-                    className="w-full rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm outline-none"
-                  />
-                  <div className="mt-1 text-xs text-zinc-500">{formatCOP(r.price_cop)}</div>
-                </div>
-                <div className="col-span-1">
-                  <input
-                    type="checkbox"
-                    checked={r.active}
-                    onChange={(e) => updateProduct(r.id, { active: e.target.checked })}
-                  />
-                </div>
-                <div className="col-span-2 flex justify-end gap-1">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100"
-                    onClick={() => deleteProduct(r.id)}
-                    title="Desactivar producto"
-                  >
-                    <FiTrash2 /> Desactivar
-                  </Button>
-                  <button
-                    type="button"
-                    className="text-[11px] text-red-500 hover:text-red-700 underline font-semibold px-2"
-                    onClick={() => setDeleteModal({ id: r.id, name: r.name })}
-                    title="Eliminar permanentemente (borra historial de ventas)"
-                  >
-                    Eliminar
-                  </button>
+
+                {/* Mobile: card layout */}
+                <div className="lg:hidden space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0 mr-3">
+                      <input
+                        defaultValue={r.name}
+                        onBlur={(e) => {
+                          const v = e.target.value.trim();
+                          if (v && v !== r.name) updateProduct(r.id, { name: v });
+                        }}
+                        className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none font-semibold"
+                      />
+                      <div className="mt-1 font-mono text-[11px] text-zinc-400">#{r.id}</div>
+                    </div>
+                    <label className="flex items-center gap-1.5 text-xs text-zinc-500">
+                      <input
+                        type="checkbox"
+                        checked={r.active}
+                        onChange={(e) => updateProduct(r.id, { active: e.target.checked })}
+                      />
+                      Activo
+                    </label>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[11px] font-semibold text-zinc-500 uppercase">Cantidad</label>
+                      <input
+                        type="number"
+                        defaultValue={r.stock_qty}
+                        onBlur={(e) => {
+                          const v = Number(e.target.value);
+                          if (!Number.isNaN(v) && v !== r.stock_qty) updateProduct(r.id, { stock_qty: v });
+                        }}
+                        className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none mt-1"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-semibold text-zinc-500 uppercase">Precio</label>
+                      <input
+                        type="number"
+                        defaultValue={r.price_cop}
+                        onBlur={(e) => {
+                          const v = Number(e.target.value);
+                          if (!Number.isNaN(v) && v !== r.price_cop) updateProduct(r.id, { price_cop: v });
+                        }}
+                        className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none mt-1"
+                      />
+                      <div className="mt-1 text-xs text-zinc-500">{formatCOP(r.price_cop)}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 pt-1">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="flex-1 border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100 text-xs"
+                      onClick={() => deleteProduct(r.id)}
+                    >
+                      <FiTrash2 /> Desactivar
+                    </Button>
+                    <button
+                      type="button"
+                      className="text-[11px] text-red-500 hover:text-red-700 underline font-semibold px-3 py-2"
+                      onClick={() => setDeleteModal({ id: r.id, name: r.name })}
+                    >
+                      Eliminar
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
