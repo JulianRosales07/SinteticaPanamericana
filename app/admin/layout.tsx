@@ -149,19 +149,19 @@ export default function AdminLayout({ children }: PropsWithChildren) {
     <div className="flex flex-col min-h-screen bg-surface turf-accent">
       {/* TopNavBar con glassmorphism */}
       <header className="glass-card sticky top-0 z-50 border-b border-outline-variant/30 shadow-lg">
-        <div className="flex justify-between items-center w-full px-4 md:px-10 py-4 md:py-5 max-w-7xl mx-auto">
-          <div className="flex items-center gap-3 md:gap-4">
-            <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-primary-container flex items-center justify-center">
-              <span className="material-symbols-outlined text-xl md:text-2xl text-on-primary-container">sports_soccer</span>
+        <div className="flex justify-between items-center w-full px-4 lg:px-10 py-4 lg:py-5 max-w-7xl mx-auto">
+          <div className="flex items-center gap-3 lg:gap-4">
+            <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl bg-primary-container flex items-center justify-center">
+              <span className="material-symbols-outlined text-xl lg:text-2xl text-on-primary-container">sports_soccer</span>
             </div>
             <div className="flex flex-col">
-              <h1 className="text-sm md:text-lg font-black text-on-surface leading-none">Sintéticas Panamericana</h1>
-              <p className="text-[10px] md:text-xs font-semibold text-on-surface-variant">Panel de Administración</p>
+              <h1 className="text-sm lg:text-lg font-black text-on-surface leading-none">Sintéticas Panamericana</h1>
+              <p className="text-[10px] lg:text-xs font-semibold text-on-surface-variant">Panel de Administración</p>
             </div>
           </div>
 
           {/* Desktop: user info */}
-          <div className="hidden md:flex items-center gap-4">
+          <div className="hidden lg:flex items-center gap-4">
             <div className="flex items-center gap-3 glass-effect px-5 py-2.5 rounded-xl border border-outline-variant/20">
               <div className="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center">
                 <span className="material-symbols-outlined text-lg text-on-primary-container">account_circle</span>
@@ -178,10 +178,10 @@ export default function AdminLayout({ children }: PropsWithChildren) {
             </div>
           </div>
 
-          {/* Mobile: hamburger button */}
+          {/* Mobile/Tablet: hamburger button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden flex items-center justify-center w-10 h-10 rounded-lg hover:bg-surface-container transition-colors"
+            className="lg:hidden flex items-center justify-center w-10 h-10 rounded-lg hover:bg-surface-container transition-colors"
           >
             <span className="material-symbols-outlined text-2xl text-on-surface">
               {mobileMenuOpen ? "close" : "menu"}
@@ -190,9 +190,9 @@ export default function AdminLayout({ children }: PropsWithChildren) {
         </div>
 
         {/* Desktop Navigation Bar */}
-        <div className="hidden md:block bg-surface-container-low border-t border-outline-variant/20">
-          <div className="max-w-7xl mx-auto px-6 md:px-10 flex items-center justify-between">
-            <nav className="flex items-center gap-4 lg:gap-6 py-3 overflow-x-auto hide-scrollbar">
+        <div className="hidden lg:block bg-surface-container-low border-t border-outline-variant/20">
+          <div className="max-w-7xl mx-auto px-6 lg:px-10 flex items-center justify-between">
+            <nav className="flex items-center gap-4 xl:gap-6 py-3 overflow-x-auto hide-scrollbar">
               {adminLinks.map((l) => (
                 <Link
                   key={l.href}
@@ -217,9 +217,9 @@ export default function AdminLayout({ children }: PropsWithChildren) {
           </div>
         </div>
 
-        {/* Mobile Menu Drawer */}
+        {/* Mobile/Tablet Menu Drawer */}
         {mobileMenuOpen && (
-          <div className="md:hidden border-t border-outline-variant/20 bg-white">
+          <div className="lg:hidden border-t border-outline-variant/20 bg-white">
             <nav className="flex flex-col px-4 py-3 gap-1">
               {adminLinks.map((l) => (
                 <Link
@@ -265,7 +265,7 @@ export default function AdminLayout({ children }: PropsWithChildren) {
       </header>
 
       {/* Main Content */}
-      <main className="flex-grow max-w-7xl mx-auto w-full px-4 md:px-10 py-8 md:py-12">
+      <main className="flex-grow max-w-7xl mx-auto w-full px-4 lg:px-10 py-8 lg:py-12">
         {children}
       </main>
 
