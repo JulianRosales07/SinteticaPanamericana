@@ -29,6 +29,7 @@ export default function AdminLayout({ children }: PropsWithChildren) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [email, setEmail] = useState("");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [debugInfo, setDebugInfo] = useState<{
     email: string;
     role: string;
@@ -76,6 +77,11 @@ export default function AdminLayout({ children }: PropsWithChildren) {
     await supabase.auth.signOut();
     router.push("/login");
   };
+
+  // Cerrar menú móvil al cambiar de ruta
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
 
   if (isLoading) {
     return (
@@ -143,16 +149,18 @@ export default function AdminLayout({ children }: PropsWithChildren) {
     <div className="flex flex-col min-h-screen bg-surface turf-accent">
       {/* TopNavBar con glassmorphism */}
       <header className="glass-card sticky top-0 z-50 border-b border-outline-variant/30 shadow-lg">
-        <div className="flex justify-between items-center w-full px-6 md:px-10 py-5 max-w-7xl mx-auto">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-primary-container flex items-center justify-center">
-              <span className="material-symbols-outlined text-2xl text-on-primary-container">sports_soccer</span>
+        <div className="flex justify-between items-center w-full px-4 md:px-10 py-4 md:py-5 max-w-7xl mx-auto">
+          <div className="flex items-center gap-3 md:gap-4">
+            <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-primary-container flex items-center justify-center">
+              <span className="material-symbols-outlined text-xl md:text-2xl text-on-primary-container">sports_soccer</span>
             </div>
             <div className="flex flex-col">
-              <h1 className="text-lg font-black text-on-surface leading-none">Sintéticas Panamericana</h1>
-              <p className="text-xs font-semibold text-on-surface-variant">Panel de Administración</p>
+              <h1 className="text-sm md:text-lg font-black text-on-surface leading-none">Sintéticas Panamericana</h1>
+              <p className="text-[10px] md:text-xs font-semibold text-on-surface-variant">Panel de Administración</p>
             </div>
           </div>
+
+          {/* Desktop: user info */}
           <div className="hidden md:flex items-center gap-4">
             <div className="flex items-center gap-3 glass-effect px-5 py-2.5 rounded-xl border border-outline-variant/20">
               <div className="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center">
@@ -169,12 +177,22 @@ export default function AdminLayout({ children }: PropsWithChildren) {
               </button>
             </div>
           </div>
+
+          {/* Mobile: hamburger button */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="md:hidden flex items-center justify-center w-10 h-10 rounded-lg hover:bg-surface-container transition-colors"
+          >
+            <span className="material-symbols-outlined text-2xl text-on-surface">
+              {mobileMenuOpen ? "close" : "menu"}
+            </span>
+          </button>
         </div>
 
-        {/* Navigation Bar */}
-        <div className="bg-surface-container-low border-t border-outline-variant/20 overflow-x-auto hide-scrollbar">
-          <div className="max-w-7xl mx-auto px-6 md:px-10 flex items-center justify-between min-w-max">
-            <nav className="flex items-center gap-6 py-3">
+        {/* Desktop Navigation Bar */}
+        <div className="hidden md:block bg-surface-container-low border-t border-outline-variant/20">
+          <div className="max-w-7xl mx-auto px-6 md:px-10 flex items-center justify-between">
+            <nav className="flex items-center gap-4 lg:gap-6 py-3 overflow-x-auto hide-scrollbar">
               {adminLinks.map((l) => (
                 <Link
                   key={l.href}
@@ -192,16 +210,62 @@ export default function AdminLayout({ children }: PropsWithChildren) {
             </nav>
             <Link 
               href="/admin/cuadre"
-              className="ml-6 bg-secondary-container text-on-secondary-container px-6 py-2.5 rounded-xl text-sm font-bold hover:scale-105 transition-all shadow-lg whitespace-nowrap"
+              className="ml-4 bg-secondary-container text-on-secondary-container px-6 py-2.5 rounded-xl text-sm font-bold hover:scale-105 transition-all shadow-lg whitespace-nowrap"
             >
               💰 Cuadre de caja
             </Link>
           </div>
         </div>
+
+        {/* Mobile Menu Drawer */}
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t border-outline-variant/20 bg-white">
+            <nav className="flex flex-col px-4 py-3 gap-1">
+              {adminLinks.map((l) => (
+                <Link
+                  key={l.href}
+                  href={l.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={cn(
+                    "text-sm font-bold px-4 py-3 rounded-xl transition-all",
+                    pathname === l.href
+                      ? "text-primary bg-primary-container/20"
+                      : "text-on-surface-variant hover:text-primary hover:bg-surface-container"
+                  )}
+                >
+                  {l.label}
+                </Link>
+              ))}
+              <Link
+                href="/admin/cuadre"
+                onClick={() => setMobileMenuOpen(false)}
+                className="mt-2 bg-secondary-container text-on-secondary-container px-4 py-3 rounded-xl text-sm font-bold text-center"
+              >
+                💰 Cuadre de caja
+              </Link>
+            </nav>
+            {/* User info en mobile */}
+            <div className="border-t border-outline-variant/20 px-4 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center">
+                  <span className="material-symbols-outlined text-lg text-on-primary-container">account_circle</span>
+                </div>
+                <span className="text-xs font-bold text-on-surface truncate max-w-[180px]">{email}</span>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-1.5 text-sm font-bold text-error hover:underline"
+              >
+                <span className="material-symbols-outlined text-lg">logout</span>
+                Salir
+              </button>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Main Content */}
-      <main className="flex-grow max-w-7xl mx-auto w-full px-4 md:px-10 py-12">
+      <main className="flex-grow max-w-7xl mx-auto w-full px-4 md:px-10 py-8 md:py-12">
         {children}
       </main>
 
