@@ -95,7 +95,7 @@ export function Footer() {
             Contacto
           </div>
           <ul className="mt-3 space-y-2 text-sm text-zinc-300">
-            <li>WhatsApp: +57 300 000 0000</li>
+            <li>WhatsApp: +57 3223647348</li>
             <li>Dirección: (pendiente)</li>
             <li>Horario: 06:00–23:00</li>
           </ul>

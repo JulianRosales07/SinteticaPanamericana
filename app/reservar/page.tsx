@@ -352,7 +352,7 @@ export default function ReservarPage() {
                         <span className="font-bold">{formatCOP(price)}</span>
                       </div>
                       <div className="flex justify-between text-xs text-primary-fixed">
-                        <span>Anticipo (30%)</span>
+                        <span>Anticipo ({depositInfo ? `${depositInfo.percent}%` : "30%"})</span>
                         <span className="font-bold">{formatCOP(price * 0.3)}</span>
                       </div>
                     </div>
@@ -382,7 +382,6 @@ export default function ReservarPage() {
                   <ul className="text-xs space-y-2.5 text-on-surface-variant">
                     <li className="flex gap-2"><span className="material-symbols-outlined text-primary text-[16px]">info</span> El saldo restante se paga en taquilla.</li>
                     <li className="flex gap-2"><span className="material-symbols-outlined text-primary text-[16px]">cancel</span> Cancelaciones con 24h de antelación.</li>
-                    <li className="flex gap-2"><span className="material-symbols-outlined text-primary text-[16px]">check_circle</span> Incluye petos e hidratación básica.</li>
                   </ul>
                 </div>
               </div>
