@@ -53,100 +53,174 @@ export default function AdminUsuariosPage() {
   if (isLoading) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
-        <FiLoader className="animate-spin text-3xl text-red-700" />
+        <FiLoader className="animate-spin text-3xl text-primary" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h2 className="text-2xl font-black tracking-tight">Usuarios</h2>
-          <p className="mt-1 text-sm text-zinc-600">
-            Gestión de perfiles (usuario/teléfono/rol).
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+    <div className="space-y-5">
+      {/* Header */}
+      <div>
+        <h2 className="text-xl lg:text-2xl font-black tracking-tight text-on-surface">Usuarios</h2>
+        <p className="mt-1 text-sm text-on-surface-variant">
+          Gestión de perfiles ({filtered.length} usuarios)
+        </p>
+      </div>
+
+      {/* Search + Reload */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-xl">search</span>
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Buscar por nombre, teléfono, rol o id..."
-            className="w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm outline-none md:w-[360px]"
+            placeholder="Buscar por nombre, teléfono o rol..."
+            className="w-full pl-10 pr-4 py-3 rounded-xl border border-outline-variant/40 bg-white text-sm outline-none focus:ring-2 focus:ring-primary focus:border-primary"
           />
-          <Button type="button" onClick={load}>
-            <FiRefreshCw /> Recargar
-          </Button>
         </div>
+        <Button type="button" onClick={load} className="shrink-0">
+          <FiRefreshCw /> Recargar
+        </Button>
       </div>
 
       {error && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
           {error}
         </div>
       )}
 
-      <div className="overflow-hidden rounded-3xl border border-zinc-200">
-        <div className="grid grid-cols-12 gap-2 bg-zinc-50 px-5 py-4 text-xs font-semibold uppercase tracking-wide text-zinc-600">
-          <div className="col-span-3">Usuario</div>
-          <div className="col-span-3">Teléfono</div>
-          <div className="col-span-2">Rol</div>
-          <div className="col-span-2">Creado</div>
-          <div className="col-span-2">Id</div>
+      {/* Users List */}
+      {filtered.length === 0 ? (
+        <div className="rounded-xl border border-outline-variant/30 bg-white p-8 text-center text-sm text-on-surface-variant">
+          Sin resultados.
         </div>
-
-        {filtered.length === 0 ? (
-          <div className="px-5 py-10 text-center text-sm text-zinc-600">
-            Sin resultados.
-          </div>
-        ) : (
-          <div className="divide-y divide-zinc-200 bg-white">
-            {filtered.map((r) => (
-              <div key={r.id} className="grid grid-cols-12 items-center gap-2 px-5 py-4 text-sm">
-                <div className="col-span-3">
-                  <input
-                    defaultValue={r.username ?? ""}
-                    placeholder="(sin nombre)"
-                    onBlur={(e) => {
-                      const v = e.target.value.trim();
-                      if (v !== (r.username ?? "")) updateProfile(r.id, { username: v });
-                    }}
-                    className="w-full rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm outline-none"
-                  />
-                </div>
-                <div className="col-span-3">
-                  <input
-                    defaultValue={r.phone ?? ""}
-                    placeholder="(sin teléfono)"
-                    onBlur={(e) => {
-                      const v = e.target.value.trim();
-                      if (v !== (r.phone ?? "")) updateProfile(r.id, { phone: v });
-                    }}
-                    className="w-full rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm outline-none"
-                  />
-                </div>
-                <div className="col-span-2">
-                  <select
-                    value={r.role}
-                    onChange={(e) => updateProfile(r.id, { role: e.target.value })}
-                    className="w-full rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm outline-none"
-                  >
-                    <option value="user">user</option>
-                    <option value="admin">admin</option>
-                  </select>
-                </div>
-                <div className="col-span-2 text-xs text-zinc-600">
-                  {new Date(r.created_at).toLocaleString("es-CO")}
-                </div>
-                <div className="col-span-2 font-mono text-[11px] text-zinc-500">
-                  {r.id}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      ) : (
+        <div className="space-y-2">
+          {filtered.map((r) => (
+            <UserCard key={r.id} profile={r} onUpdate={updateProfile} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
+// ─── User Card Component ──────────────────────────────────────────────────────
+
+function UserCard({
+  profile: r,
+  onUpdate,
+}: {
+  profile: ProfileRow;
+  onUpdate: (id: string, patch: Partial<ProfileRow>) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  const roleColor = r.role === "admin"
+    ? "bg-primary/10 text-primary border-primary/20"
+    : "bg-surface-container-high text-on-surface-variant border-outline-variant/20";
+
+  return (
+    <div className="bg-white rounded-xl border border-outline-variant/30 shadow-sm overflow-hidden">
+      {/* Compact row */}
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center gap-3 px-4 py-3 text-left"
+      >
+        {/* Avatar */}
+        <div className="w-9 h-9 rounded-full bg-primary-container flex items-center justify-center shrink-0">
+          <span className="material-symbols-outlined text-lg text-on-primary-container">person</span>
+        </div>
+
+        {/* Name + phone */}
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-on-surface truncate">
+            {r.username || "(sin nombre)"}
+          </p>
+          <p className="text-xs text-on-surface-variant truncate">
+            {r.phone || "(sin teléfono)"}
+          </p>
+        </div>
+
+        {/* Role badge */}
+        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border shrink-0 ${roleColor}`}>
+          {r.role}
+        </span>
+
+        {/* Chevron */}
+        <span className={`material-symbols-outlined text-lg text-outline transition-transform ${expanded ? "rotate-180" : ""}`}>
+          expand_more
+        </span>
+      </button>
+
+      {/* Expanded edit form */}
+      {expanded && (
+        <div className="px-4 pb-4 pt-2 border-t border-outline-variant/20 space-y-3">
+          {/* Edit fields */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div>
+              <label className="text-[10px] uppercase font-bold text-outline tracking-wider">Nombre</label>
+              <input
+                defaultValue={r.username ?? ""}
+                placeholder="(sin nombre)"
+                onBlur={(e) => {
+                  const v = e.target.value.trim();
+                  if (v !== (r.username ?? "")) onUpdate(r.id, { username: v });
+                }}
+                className="w-full mt-1 rounded-lg border border-outline-variant/40 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] uppercase font-bold text-outline tracking-wider">Teléfono</label>
+              <input
+                defaultValue={r.phone ?? ""}
+                placeholder="(sin teléfono)"
+                onBlur={(e) => {
+                  const v = e.target.value.trim();
+                  if (v !== (r.phone ?? "")) onUpdate(r.id, { phone: v });
+                }}
+                className="w-full mt-1 rounded-lg border border-outline-variant/40 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div>
+              <label className="text-[10px] uppercase font-bold text-outline tracking-wider">Rol</label>
+              <select
+                value={r.role}
+                onChange={(e) => onUpdate(r.id, { role: e.target.value })}
+                className="w-full mt-1 rounded-lg border border-outline-variant/40 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="user">user</option>
+                <option value="admin">admin</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-[10px] uppercase font-bold text-outline tracking-wider">Registrado</label>
+              <p className="mt-1 px-3 py-2 text-xs text-on-surface-variant bg-surface-container-low rounded-lg">
+                {new Date(r.created_at).toLocaleDateString("es-CO", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </p>
+            </div>
+          </div>
+
+          {/* ID */}
+          <div className="flex items-center gap-2 pt-1">
+            <span className="text-[10px] uppercase font-bold text-outline">ID:</span>
+            <span className="font-mono text-[10px] text-on-surface-variant bg-surface-container-low px-2 py-1 rounded truncate">
+              {r.id}
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
