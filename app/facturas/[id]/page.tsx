@@ -96,10 +96,16 @@ export default function InvoicePage() {
         {/* Top bar - hidden on print */}
         <div className="mb-4 flex items-center justify-between print:hidden">
           <button
-            onClick={() => router.back()}
-            className="inline-flex items-center gap-1.5 text-sm font-bold text-primary hover:underline"
+            onClick={() => {
+              if (window.history.length > 1) {
+                router.back();
+              } else {
+                router.push("/admin/facturas");
+              }
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-2 bg-white border border-outline-variant/40 rounded-lg text-sm font-bold text-on-surface hover:bg-surface-container transition-colors"
           >
-            <FiArrowLeft /> Volver
+            <FiArrowLeft /> Volver a facturas
           </button>
           <button
             onClick={handlePrint}
