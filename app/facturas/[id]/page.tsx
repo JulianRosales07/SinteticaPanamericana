@@ -91,7 +91,7 @@ export default function InvoicePage() {
   const status = statusConfig[invoice.payment_status] || statusConfig.pending;
 
   return (
-    <div className="min-h-screen bg-surface py-6 px-4 lg:py-12 lg:px-6 print:bg-white print:py-0 print:px-0">
+    <div className="min-h-screen bg-surface pt-20 py-6 px-4 lg:pt-24 lg:py-12 lg:px-6 print:bg-white print:py-0 print:px-0 print:pt-0">
       <div className="mx-auto max-w-2xl">
         {/* Top bar - hidden on print */}
         <div className="mb-4 flex items-center justify-between print:hidden">
