@@ -41,7 +41,6 @@ const MONTHS_ES = [
 ];
 
 function getWeekDays(anchor: Date) {
-  // Generate 7 days window: 3 before anchor, anchor, 3 after
   return Array.from({ length: 9 }, (_, i) => {
     const d = new Date(anchor);
     d.setDate(anchor.getDate() - 4 + i);
@@ -67,7 +66,6 @@ export default function AdminReservasPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Date picker state
   const [selectedDate, setSelectedDate] = useState<Date>(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -156,7 +154,6 @@ export default function AdminReservasPage() {
     setReservationToDelete(null);
   }
 
-  // Filtered rows for selected date
   const filteredRows = useMemo(() => {
     let r = rows.filter((row) => row.date === selectedDateStr);
     if (searchQuery.trim()) {
@@ -183,7 +180,6 @@ export default function AdminReservasPage() {
     [activeRows],
   );
 
-  // Today in YYYY-MM-DD
   const todayStr = toDateStr(new Date());
 
   const prevWeek = () => {
@@ -204,137 +200,92 @@ export default function AdminReservasPage() {
   };
 
   return (
-    <div>
-      {/* Search Bar & Filters */}
-      <div className="mb-stack-lg bg-white p-4 rounded-xl border border-outline-variant/30 shadow-soft flex flex-col md:flex-row gap-4 items-center">
-        <div className="relative flex-grow w-full">
-          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline" data-icon="search">search</span>
-          <input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-surface-container-low border border-outline-variant/40 rounded-lg focus:ring-2 focus:ring-secondary focus:border-secondary outline-none text-body-md text-on-surface"
-            placeholder="Buscar cliente por nombre, teléfono o ID..."
-            type="text"
-          />
+    <div className="space-y-6">
+      {/* Header + Summary */}
+      <div className="flex flex-col gap-4">
+        <div>
+          <h2 className="text-xl lg:text-2xl font-black tracking-tight text-on-surface">Calendario de Reservas</h2>
+          <p className="text-sm text-on-surface-variant mt-1">Gestiona las reservas por fecha y cancha.</p>
         </div>
-        <div className="flex items-center gap-2 w-full md:w-auto">
-          <button
-            type="button"
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-outline-variant/40 rounded-lg hover:bg-surface-container-low transition-colors text-label-md font-bold text-on-surface whitespace-nowrap"
-          >
-            <span className="material-symbols-outlined text-body-md" data-icon="filter_list">filter_list</span>
-            Filtros
-          </button>
-          <button
-            type="button"
-            className="flex items-center gap-2 px-4 py-2.5 bg-secondary text-white rounded-lg hover:brightness-110 transition-all text-label-md font-bold whitespace-nowrap shadow-md shadow-secondary/20"
-          >
-            <span className="material-symbols-outlined text-body-md" data-icon="add">add</span>
-            Nueva Reserva
-          </button>
+
+        {/* Summary + Actions Row */}
+        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+          <div className="flex items-center gap-3 bg-white px-4 py-3 rounded-xl border border-outline-variant/30 shadow-sm">
+            <div>
+              <span className="text-[10px] uppercase font-bold text-outline tracking-wider">Resumen</span>
+              <p className="text-sm font-bold text-on-surface">
+                <span className="text-primary">{activeRows.length}</span> activas • {formatCOP(totalValue)}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={load}
+              className="ml-auto bg-primary text-white px-4 py-2 rounded-lg text-xs font-bold hover:brightness-110 active:scale-95 transition-all"
+            >
+              Recargar
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label className="flex items-center gap-2 text-xs font-semibold text-on-surface-variant bg-white px-3 py-2 rounded-lg border border-outline-variant/30 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showCancelled}
+                onChange={(e) => setShowCancelled(e.target.checked)}
+                className="rounded border-outline-variant text-primary focus:ring-primary"
+              />
+              Ver canceladas
+            </label>
+          </div>
         </div>
       </div>
 
-      {/* Header Section */}
-      <div className="mb-stack-lg flex flex-col lg:flex-row justify-between items-start lg:items-end gap-gutter">
-        <div>
-          <h2 className="text-display font-display text-on-background mb-2 tracking-tight">Panel de administración</h2>
-          <p className="text-body-lg font-body-lg text-on-surface-variant max-w-2xl">Gestión de reservas, precios, usuarios, productos y caja.</p>
-        </div>
-        {/* Summary Card */}
-        <div className="flex items-center gap-4 bg-white p-4 rounded-xl border border-outline-variant/30 shadow-soft">
-          <div className="flex flex-col">
-            <span className="text-label-sm font-label-sm text-outline uppercase tracking-wider">Resumen total</span>
-            <p className="text-headline-md font-headline-md text-on-surface">
-              <span className="font-bold text-secondary">{activeRows.length}</span> activas{" "}
-              <span className="mx-1 opacity-30">•</span>{" "}
-              <span className="text-on-tertiary-container">{formatCOP(totalValue)}</span>
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={load}
-            className="bg-error text-white h-12 px-8 rounded-lg font-bold text-label-md hover:brightness-110 active:scale-95 transition-all shadow-lg shadow-error/20"
-          >
-            Recargar
-          </button>
-        </div>
+      {/* Search Bar */}
+      <div className="relative">
+        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-xl">search</span>
+        <input
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full pl-10 pr-4 py-3 bg-white border border-outline-variant/40 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-sm"
+          placeholder="Buscar cliente por nombre, teléfono o ID..."
+          type="text"
+        />
       </div>
 
       {error && (
-        <div className="mb-4 rounded-xl border border-error/30 bg-error-container p-3 text-sm text-on-error-container font-semibold">
+        <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700 font-semibold">
           {error}
         </div>
       )}
 
-      {/* Reservations Control Section */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-gutter mb-stack-lg border-b border-outline-variant/20 pb-6">
-        <div>
-          <div className="flex items-center gap-4 mb-2">
-            <h3 className="text-headline-lg font-headline-lg text-on-background">Calendario de Reservas</h3>
-            <div className="flex items-center gap-2 bg-surface-container-high px-3 py-1 rounded-full">
-              <input
-                className="rounded border-outline-variant text-secondary focus:ring-secondary"
-                id="canceled"
-                type="checkbox"
-                checked={showCancelled}
-                onChange={(e) => setShowCancelled(e.target.checked)}
-              />
-              <label className="text-label-md font-label-md text-on-surface cursor-pointer" htmlFor="canceled">
-                Ver canceladas
-              </label>
-            </div>
-          </div>
-          <p className="text-body-md font-body-md text-on-surface-variant">Consulta la disponibilidad y gestiona las reservas activas.</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            className="p-2 border border-outline-variant/40 hover:bg-surface-container-high rounded-lg transition-colors flex items-center justify-center"
-          >
-            <span className="material-symbols-outlined" data-icon="calendar_month">calendar_month</span>
-          </button>
-          <div className="flex items-center bg-white border border-outline-variant/40 rounded-lg overflow-hidden">
-            <button type="button" className="px-3 py-2 hover:bg-surface-container-low transition-colors border-r border-outline-variant/40 text-label-md">Día</button>
-            <button type="button" className="px-3 py-2 bg-secondary text-white font-bold text-label-md">Semana</button>
-            <button type="button" className="px-3 py-2 hover:bg-surface-container-low transition-colors border-l border-outline-variant/40 text-label-md">Mes</button>
-          </div>
-        </div>
-      </div>
-
-      {/* Horizontal Date Picker */}
-      <div className="mb-stack-lg">
+      {/* Date Picker */}
+      <div className="bg-white rounded-xl border border-outline-variant/30 p-4 shadow-sm">
         <div className="flex items-center justify-between mb-4">
-          <h4 className="text-label-md font-bold text-on-surface-variant uppercase tracking-widest flex items-center gap-2">
-            <span className="material-symbols-outlined text-body-md" data-icon="today">today</span>
-            Seleccionar fecha
-          </h4>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={prevWeek}
-                className="p-1.5 hover:bg-surface-container-high rounded-full transition-colors border border-outline-variant/20"
-              >
-                <span className="material-symbols-outlined text-body-md" data-icon="chevron_left">chevron_left</span>
-              </button>
-              <span className="text-label-md font-bold text-on-surface min-w-[120px] text-center">
-                {MONTHS_ES[anchorDate.getMonth()]} {anchorDate.getFullYear()}
-              </span>
-              <button
-                type="button"
-                onClick={nextWeek}
-                className="p-1.5 hover:bg-surface-container-high rounded-full transition-colors border border-outline-variant/20"
-              >
-                <span className="material-symbols-outlined text-body-md" data-icon="chevron_right">chevron_right</span>
-              </button>
-            </div>
-            <button type="button" onClick={goToday} className="text-secondary text-label-md font-bold hover:underline">
-              Ir a hoy
+          <button type="button" onClick={goToday} className="text-primary text-xs font-bold hover:underline">
+            Hoy
+          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={prevWeek}
+              className="p-1.5 hover:bg-surface-container-high rounded-full transition-colors"
+            >
+              <span className="material-symbols-outlined text-lg">chevron_left</span>
+            </button>
+            <span className="text-sm font-bold text-on-surface min-w-[130px] text-center">
+              {MONTHS_ES[anchorDate.getMonth()]} {anchorDate.getFullYear()}
+            </span>
+            <button
+              type="button"
+              onClick={nextWeek}
+              className="p-1.5 hover:bg-surface-container-high rounded-full transition-colors"
+            >
+              <span className="material-symbols-outlined text-lg">chevron_right</span>
             </button>
           </div>
         </div>
-        <div className="flex gap-3 overflow-x-auto pb-4 hide-scrollbar">
+
+        <div className="flex gap-2 overflow-x-auto pb-2 hide-scrollbar">
           {weekDays.map((day) => {
             const ds = toDateStr(day);
             const isToday = ds === todayStr;
@@ -345,25 +296,25 @@ export default function AdminReservasPage() {
                 key={ds}
                 type="button"
                 onClick={() => setSelectedDate(new Date(day))}
-                className={`shrink-0 w-20 h-24 rounded-xl flex flex-col items-center justify-center gap-1 relative transition-all
+                className={`shrink-0 w-14 sm:w-16 py-3 rounded-xl flex flex-col items-center justify-center gap-0.5 relative transition-all
                   ${isSelected
-                    ? "border-2 border-secondary bg-secondary-container/10 shadow-md shadow-secondary/10"
-                    : "border border-outline-variant/30 bg-white hover:border-secondary group"
+                    ? "border-2 border-primary bg-primary/5 shadow-sm"
+                    : "border border-outline-variant/30 bg-white hover:border-primary/50"
                   }`}
               >
                 {isToday && (
-                  <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-secondary text-white text-[9px] px-2 py-0.5 rounded-full font-bold uppercase">
-                    Hoy
+                  <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 bg-primary text-white text-[8px] px-1.5 py-0.5 rounded-full font-bold">
+                    HOY
                   </div>
                 )}
-                <span className={`text-label-sm uppercase font-bold ${isSelected ? "text-secondary" : "text-outline group-hover:text-secondary"}`}>
+                <span className={`text-[10px] uppercase font-bold ${isSelected ? "text-primary" : "text-outline"}`}>
                   {DAYS_ES[day.getDay()]}
                 </span>
-                <span className={`text-headline-md font-bold ${isSelected ? "text-secondary" : "text-on-surface group-hover:text-secondary"}`}>
+                <span className={`text-lg font-bold ${isSelected ? "text-primary" : "text-on-surface"}`}>
                   {day.getDate()}
                 </span>
                 {dayReservations > 0 && (
-                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${isSelected ? "bg-secondary text-white" : "bg-surface-container-high text-outline"}`}>
+                  <span className={`text-[8px] font-bold px-1.5 rounded-full ${isSelected ? "bg-primary text-white" : "bg-surface-container-high text-outline"}`}>
                     {dayReservations}
                   </span>
                 )}
@@ -373,14 +324,13 @@ export default function AdminReservasPage() {
         </div>
       </div>
 
-      {/* Scheduling Grid */}
+      {/* Reservations Grid */}
       {isLoading ? (
-        <div className="flex min-h-[40vh] items-center justify-center">
-          <FiLoader className="animate-spin text-3xl text-secondary" />
+        <div className="flex min-h-[30vh] items-center justify-center">
+          <FiLoader className="animate-spin text-3xl text-primary" />
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-gutter">
-          {/* Cancha 1 */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <CourtColumn
             courtId={1}
             rows={court1Rows}
@@ -388,7 +338,6 @@ export default function AdminReservasPage() {
             onUpdate={updateReservation}
             onDeleteRequest={setReservationToDelete}
           />
-          {/* Cancha 2 */}
           <CourtColumn
             courtId={2}
             rows={court2Rows}
@@ -402,24 +351,25 @@ export default function AdminReservasPage() {
       {/* Delete Confirmation Modal */}
       {reservationToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-xl">
-            <div className="flex items-center gap-3 text-error mb-4">
-              <div className="bg-error-container p-2 rounded-full">
-                <FiTrash2 className="text-xl text-error" />
+          <div className="bg-white rounded-2xl p-5 w-full max-w-sm shadow-xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="bg-red-100 p-2.5 rounded-full">
+                <FiTrash2 className="text-lg text-red-600" />
               </div>
-              <h3 className="text-lg font-black tracking-tight text-on-surface">Eliminar Reserva</h3>
+              <div>
+                <h3 className="text-base font-bold text-on-surface">Eliminar Reserva</h3>
+                <p className="text-xs text-on-surface-variant">Esta acción no se puede deshacer</p>
+              </div>
             </div>
-            <p className="text-sm text-on-surface-variant mb-6 leading-relaxed">
-              ¿Estás seguro de que deseas eliminar esta reserva permanentemente? Esta acción{" "}
-              <strong className="font-semibold text-on-surface">no se puede deshacer</strong> y los datos
-              se perderán de la base de datos.
+            <p className="text-sm text-on-surface-variant mb-5">
+              ¿Estás seguro de que deseas eliminar esta reserva permanentemente?
             </p>
             <div className="flex gap-3 justify-end">
               <button
                 type="button"
                 disabled={isDeleting}
                 onClick={() => setReservationToDelete(null)}
-                className="px-4 py-2 text-sm font-semibold text-on-surface-variant hover:bg-surface-container-high rounded-xl transition-colors disabled:opacity-50"
+                className="px-4 py-2.5 text-sm font-semibold text-on-surface-variant hover:bg-surface-container-high rounded-xl transition-colors"
               >
                 Cancelar
               </button>
@@ -427,7 +377,7 @@ export default function AdminReservasPage() {
                 type="button"
                 disabled={isDeleting}
                 onClick={() => confirmDelete(reservationToDelete)}
-                className="px-4 py-2 text-sm font-semibold text-white bg-error hover:brightness-110 rounded-xl transition-all shadow-sm disabled:opacity-50 flex items-center gap-2"
+                className="px-4 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-all shadow-sm flex items-center gap-2"
               >
                 {isDeleting ? <FiLoader className="animate-spin" /> : "Sí, eliminar"}
               </button>
@@ -439,7 +389,7 @@ export default function AdminReservasPage() {
   );
 }
 
-// ─── Court Column Component ───────────────────────────────────────────────────
+// ─── Court Column ─────────────────────────────────────────────────────────────
 
 function CourtColumn({
   courtId,
@@ -454,30 +404,24 @@ function CourtColumn({
   onUpdate: (id: string, patch: Partial<ReservationRow>) => void;
   onDeleteRequest: (id: string) => void;
 }) {
-  const borderColor = courtId === 1 ? "border-secondary" : "border-primary";
-  const iconColor = courtId === 1 ? "text-secondary" : "text-primary";
-  const badgeColor = courtId === 1 ? "text-secondary border-secondary/20" : "text-outline-variant border-outline-variant/20";
+  const accentColor = courtId === 1 ? "border-primary" : "border-tertiary";
+  const iconColor = courtId === 1 ? "text-primary" : "text-tertiary";
 
   return (
-    <div className="space-y-stack-md">
-      {/* Header */}
-      <div className={`flex items-center gap-3 px-4 py-3 bg-surface-container rounded-t-xl border-b-2 ${borderColor} shadow-sm`}>
-        <span className={`material-symbols-outlined ${iconColor}`} data-icon="sports_soccer">sports_soccer</span>
-        <h4 className="text-headline-md font-bold text-on-surface">Cancha {courtId}</h4>
-        <span className={`ml-auto text-label-sm bg-white/60 px-3 py-1 rounded-full font-bold border ${badgeColor}`}>
-          {rows.length} {rows.length === 1 ? "Reserva" : "Reservas"}
+    <div className="space-y-3">
+      <div className={`flex items-center gap-3 px-4 py-3 bg-white rounded-xl border-l-4 ${accentColor} shadow-sm`}>
+        <span className={`material-symbols-outlined ${iconColor}`}>sports_soccer</span>
+        <h4 className="text-base font-bold text-on-surface">Cancha {courtId}</h4>
+        <span className="ml-auto text-xs bg-surface-container-high px-2.5 py-1 rounded-full font-bold text-on-surface-variant">
+          {rows.length} {rows.length === 1 ? "reserva" : "reservas"}
         </span>
       </div>
 
       {rows.length === 0 ? (
-        <div className="border-2 border-dashed border-outline-variant/20 rounded-xl p-8 flex flex-col items-center justify-center bg-white/40 min-h-[200px] text-center">
-          <div className="bg-surface-container-high w-16 h-16 rounded-full flex items-center justify-center mb-4">
-            <span className="material-symbols-outlined text-4xl text-outline-variant/50" data-icon="event_available">event_available</span>
-          </div>
-          <p className="text-on-surface font-bold text-body-lg">Sin reservas para este día</p>
-          <p className="text-on-surface-variant text-label-sm max-w-[200px] mt-1">
-            Cancha {courtId} está libre en esta fecha.
-          </p>
+        <div className="border border-dashed border-outline-variant/30 rounded-xl p-6 flex flex-col items-center justify-center bg-white/50 text-center">
+          <span className="material-symbols-outlined text-4xl text-outline-variant/40 mb-2">event_available</span>
+          <p className="text-sm font-semibold text-on-surface-variant">Sin reservas</p>
+          <p className="text-xs text-outline mt-0.5">Cancha {courtId} disponible</p>
         </div>
       ) : (
         rows.map((r) => (
@@ -494,15 +438,7 @@ function CourtColumn({
   );
 }
 
-// ─── Reservation Card Component ───────────────────────────────────────────────
-
-function formatCOPLocal(value: number) {
-  return new Intl.NumberFormat("es-CO", {
-    style: "currency",
-    currency: "COP",
-    maximumFractionDigits: 0,
-  }).format(value);
-}
+// ─── Reservation Card ─────────────────────────────────────────────────────────
 
 function ReservationCard({
   row: r,
@@ -521,7 +457,7 @@ function ReservationCard({
   const whatsappUrl = phone
     ? createWhatsAppUrl({
         phone,
-        text: `Hola ${customer}. Te contactamos sobre tu reserva: Cancha ${r.court_id}, ${r.date} a las ${String(r.hour).padStart(2, "0")}:00. Valor: ${formatCOPLocal(r.price_cop)}.`,
+        text: `Hola ${customer}. Te contactamos sobre tu reserva: Cancha ${r.court_id}, ${r.date} a las ${String(r.hour).padStart(2, "0")}:00. Valor: ${formatCOP(r.price_cop)}.`,
       })
     : null;
 
@@ -534,152 +470,119 @@ function ReservationCard({
   const pending = r.price_cop - depositValue;
 
   return (
-    <div className={`bg-white rounded-xl border border-outline-variant/50 p-4 shadow-soft hover:shadow-md transition-all group relative ${isCancelled ? "opacity-70" : ""}`}>
-      {/* Drag handle */}
-      <div className="drag-handle absolute left-0 top-0 bottom-0 w-6 flex items-center justify-center text-outline-variant hover:text-secondary transition-colors border-r border-outline-variant/10 rounded-l-xl">
-        <span className="material-symbols-outlined text-body-md" data-icon="drag_indicator">drag_indicator</span>
+    <div className={`bg-white rounded-xl border border-outline-variant/30 p-4 shadow-sm transition-all ${isCancelled ? "opacity-60" : ""}`}>
+      {/* Header: Time + Client */}
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="bg-surface-container px-3 py-1.5 rounded-lg shrink-0">
+            <span className="text-base font-bold text-on-surface">
+              {String(r.hour).padStart(2, "0")}:00
+            </span>
+          </div>
+          <div className="min-w-0">
+            <h5 className="text-sm font-bold text-on-surface truncate">{customer}</h5>
+            {phone ? (
+              <p className="text-xs text-outline flex items-center gap-1">
+                <span className="material-symbols-outlined text-[12px]">phone</span>
+                {phone}
+              </p>
+            ) : (
+              <p className="text-xs text-amber-500 italic">Sin teléfono</p>
+            )}
+          </div>
+        </div>
+        <span className="text-[10px] text-outline-variant shrink-0">#{r.id.slice(0, 6).toUpperCase()}</span>
       </div>
 
-      <div className="pl-6">
-        {/* Top: time + client + date */}
-        <div className="flex justify-between items-start mb-3">
-          <div className="flex items-center gap-3">
-            <div className="bg-surface-container-high p-2 rounded-lg border border-outline-variant/20">
-              <span className="text-headline-md font-bold text-on-background">
-                {String(r.hour).padStart(2, "0")}:00
-              </span>
-            </div>
-            <div>
-              <h5 className="text-body-md font-bold text-on-surface group-hover:text-secondary transition-colors">
-                {customer}
-              </h5>
-              {phone ? (
-                <p className="text-label-sm text-outline flex items-center gap-1">
-                  <span className="material-symbols-outlined text-[14px]" data-icon="phone">phone</span>
-                  {phone}
-                </p>
-              ) : (
-                <p className="text-label-sm text-amber-500 italic">Sin teléfono</p>
-              )}
-            </div>
-          </div>
-          <div className="text-right">
-            <p className="text-label-sm text-outline-variant">ID: #{r.id.slice(0, 6).toUpperCase()}</p>
-            <p className="text-label-sm text-outline-variant font-medium">{r.date}</p>
-          </div>
+      {/* Status Badges */}
+      <div className="flex flex-wrap gap-1.5 mb-3">
+        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase
+          ${isCancelled
+            ? "bg-red-100 text-red-700"
+            : isPendingPayment
+            ? "bg-amber-100 text-amber-700"
+            : "bg-green-100 text-green-700"
+          }`}>
+          {isCancelled ? "Cancelada" : isPendingPayment ? "Pend. Pago" : "Activa"}
+        </span>
+        {isConfirmed && <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px] font-bold">Confirmada</span>}
+        {isAttended && <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-[10px] font-bold">Asistió</span>}
+        {depositPaid && <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-[10px] font-bold">Abono</span>}
+      </div>
+
+      {/* Payment Info */}
+      <div className="bg-surface-container-low rounded-lg p-3 mb-3 grid grid-cols-3 gap-1 text-center">
+        <div>
+          <p className="text-[9px] uppercase font-bold text-outline">Total</p>
+          <p className="text-xs font-bold text-on-surface">{formatCOP(r.price_cop)}</p>
         </div>
-
-        {/* Status Badges */}
-        <div className="flex flex-wrap gap-1.5 mb-4">
-          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border
-            ${isCancelled
-              ? "bg-error-container/30 text-on-error-container border-error/20"
-              : isPendingPayment
-              ? "bg-amber-100 text-amber-800 border-amber-200"
-              : "bg-on-tertiary-container/10 text-on-tertiary-container border-on-tertiary-container/20"
-            }`}>
-            {isCancelled ? "Cancelada" : isPendingPayment ? "Pendiente Pago" : "Activa"}
-          </span>
-          {isConfirmed && (
-            <span className="px-2 py-0.5 bg-secondary-container/10 text-secondary rounded text-[10px] font-bold uppercase tracking-wider border border-secondary/20">
-              Confirmada
-            </span>
-          )}
-          {isAttended && (
-            <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-[10px] font-bold uppercase tracking-wider border border-purple-200">
-              Asistió
-            </span>
-          )}
-          {depositPaid && (
-            <span className="px-2 py-0.5 bg-on-tertiary-container/10 text-on-tertiary-container rounded text-[10px] font-bold uppercase tracking-wider border border-on-tertiary-container/20">
-              Abono registrado
-            </span>
-          )}
+        <div className="border-x border-outline-variant/20">
+          <p className="text-[9px] uppercase font-bold text-green-600">Pagado</p>
+          <p className="text-xs font-bold text-green-700">{formatCOP(depositValue)}</p>
         </div>
-
-        {/* Payment Info */}
-        <div className="bg-surface-container-low/50 rounded-lg p-3 border border-outline-variant/20 mb-4 grid grid-cols-3 gap-2">
-          <div>
-            <p className="text-[10px] uppercase font-bold text-outline tracking-tight">Total</p>
-            <p className="text-body-md font-bold text-on-surface">{formatCOPLocal(r.price_cop)}</p>
-          </div>
-          <div className="border-x border-outline-variant/20 px-2">
-            <p className="text-[10px] uppercase font-bold text-on-tertiary-container tracking-tight">Pagado</p>
-            <p className="text-body-md font-bold text-on-tertiary-container">{formatCOPLocal(depositValue)}</p>
-          </div>
-          <div className="pl-2">
-            <p className="text-[10px] uppercase font-bold text-error tracking-tight">Pendiente</p>
-            <p className="text-body-md font-bold text-error">{formatCOPLocal(Math.max(0, pending))}</p>
-          </div>
+        <div>
+          <p className="text-[9px] uppercase font-bold text-red-500">Pendiente</p>
+          <p className="text-xs font-bold text-red-600">{formatCOP(Math.max(0, pending))}</p>
         </div>
+      </div>
 
-        {/* Action Buttons */}
-        <div className="grid grid-cols-3 gap-2">
-          {/* Confirm / Attended */}
-          {!isCancelled && !isConfirmed && (
-            <button
-              type="button"
-              onClick={() => onUpdate(r.id, { confirmed: true, confirmed_at: new Date().toISOString() })}
-              className="flex items-center justify-center gap-1 py-2 bg-on-tertiary-container text-white rounded-lg font-bold text-label-sm hover:brightness-110 transition-all"
-            >
-              <span className="material-symbols-outlined text-sm" data-icon="check_circle">check_circle</span>
-              Ok
-            </button>
-          )}
-          {!isCancelled && isConfirmed && !isAttended && (
-            <button
-              type="button"
-              onClick={() => onUpdate(r.id, { attended: true, attended_at: new Date().toISOString() })}
-              className="flex items-center justify-center gap-1 py-2 bg-secondary text-white rounded-lg font-bold text-label-sm hover:brightness-110 transition-all"
-            >
-              <span className="material-symbols-outlined text-sm" data-icon="check_circle">check_circle</span>
-              Asistió
-            </button>
-          )}
-          {(isCancelled || isAttended) && (
-            <div className="col-span-1" />
-          )}
-
-          {/* Chat WhatsApp */}
-          <a
-            href={whatsappUrl ?? "#"}
-            target="_blank"
-            rel="noreferrer"
-            onClick={(e) => { if (!whatsappUrl) e.preventDefault(); }}
-            className={`flex items-center justify-center gap-1 py-2 border rounded-lg font-bold text-label-sm transition-colors
-              ${whatsappUrl
-                ? "border-on-tertiary-container text-on-tertiary-container hover:bg-on-tertiary-container/5"
-                : "border-outline-variant text-outline-variant cursor-not-allowed opacity-50"
-              }`}
+      {/* Actions */}
+      <div className="flex flex-wrap gap-2">
+        {!isCancelled && !isConfirmed && (
+          <button
+            type="button"
+            onClick={() => onUpdate(r.id, { confirmed: true, confirmed_at: new Date().toISOString() })}
+            className="flex-1 min-w-[80px] flex items-center justify-center gap-1 py-2 bg-primary text-white rounded-lg text-xs font-bold hover:brightness-110 transition-all"
           >
-            <span className="material-symbols-outlined text-sm" data-icon="forum">forum</span>
-            Chat
-          </a>
+            <span className="material-symbols-outlined text-sm">check_circle</span>
+            Confirmar
+          </button>
+        )}
+        {!isCancelled && isConfirmed && !isAttended && (
+          <button
+            type="button"
+            onClick={() => onUpdate(r.id, { attended: true, attended_at: new Date().toISOString() })}
+            className="flex-1 min-w-[80px] flex items-center justify-center gap-1 py-2 bg-secondary text-white rounded-lg text-xs font-bold hover:brightness-110 transition-all"
+          >
+            <span className="material-symbols-outlined text-sm">check_circle</span>
+            Asistió
+          </button>
+        )}
 
-          {/* Cancel */}
-          {!isCancelled ? (
-            <button
-              type="button"
-              onClick={() => onUpdate(r.id, { status: "cancelled" })}
-              className="flex items-center justify-center py-2 border border-outline-variant text-on-surface-variant rounded-lg font-bold text-label-sm hover:bg-surface-container-high transition-colors"
-            >
-              Cerrar
-            </button>
-          ) : (
-            <div className="col-span-1" />
-          )}
-        </div>
-
-        {/* Delete */}
-        <button
-          type="button"
-          onClick={() => onDeleteRequest(r.id)}
-          className="mt-3 w-full text-center text-error text-[10px] font-bold hover:underline py-1 flex items-center justify-center gap-1 opacity-50 hover:opacity-100 transition-opacity"
+        <a
+          href={whatsappUrl ?? "#"}
+          target="_blank"
+          rel="noreferrer"
+          onClick={(e) => { if (!whatsappUrl) e.preventDefault(); }}
+          className={`flex-1 min-w-[70px] flex items-center justify-center gap-1 py-2 border rounded-lg text-xs font-bold transition-colors
+            ${whatsappUrl
+              ? "border-green-600 text-green-700 hover:bg-green-50"
+              : "border-outline-variant text-outline-variant cursor-not-allowed opacity-50"
+            }`}
         >
-          <span className="material-symbols-outlined text-sm" data-icon="delete">delete</span>
-          Eliminar definitivamente
-        </button>
+          <span className="material-symbols-outlined text-sm">chat</span>
+          WhatsApp
+        </a>
+
+        {!isCancelled && (
+          <button
+            type="button"
+            onClick={() => onUpdate(r.id, { status: "cancelled" })}
+            className="flex-1 min-w-[70px] flex items-center justify-center py-2 border border-outline-variant text-on-surface-variant rounded-lg text-xs font-bold hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors"
+          >
+            Cancelar
+          </button>
+        )}
       </div>
+
+      {/* Delete link */}
+      <button
+        type="button"
+        onClick={() => onDeleteRequest(r.id)}
+        className="mt-2 w-full text-center text-red-400 text-[10px] font-bold hover:text-red-600 py-1 transition-colors"
+      >
+        Eliminar definitivamente
+      </button>
     </div>
   );
 }
