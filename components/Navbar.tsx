@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { FiLogIn, FiLogOut, FiShield, FiUser, FiMenu, FiX } from "react-icons/fi";
+import { FiLogIn, FiLogOut, FiUser, FiMenu, FiX } from "react-icons/fi";
 import type { AuthUser } from "../lib/types";
 import { createSupabaseBrowserClient } from "../lib/supabase/browser";
 
@@ -77,7 +77,7 @@ export function Navbar({ hidden }: { hidden?: boolean }) {
     <header className={`w-full fixed inset-x-0 top-0 z-50 bg-inverse-surface/95 backdrop-blur-md border-b border-white/10${hidden ? " hidden" : ""}`}>
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-3 group">
+        <Link href={user?.role === "admin" ? "/admin" : "/"} className="flex items-center gap-3 group">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform bg-primary-container">
             <span className="material-symbols-outlined text-xl text-on-primary-container">sports_soccer</span>
           </div>
@@ -110,15 +110,6 @@ export function Navbar({ hidden }: { hidden?: boolean }) {
 
         {/* Desktop Actions */}
         <div className="hidden items-center gap-3 lg:flex">
-          {user?.role === "admin" && (
-            <Link
-              href="/admin"
-              className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold bg-white/10 text-white border border-white/20 hover:bg-white/20 backdrop-blur-sm transition-all"
-            >
-              <FiShield /> Admin
-            </Link>
-          )}
-
           {user ? (
             <>
               <div className="flex items-center gap-2 text-sm font-bold text-white">
@@ -177,11 +168,6 @@ export function Navbar({ hidden }: { hidden?: boolean }) {
           </nav>
 
           <div className="flex flex-col gap-3 pt-2 border-t border-white/10">
-            {user?.role === "admin" && (
-              <Link href="/admin" className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold w-full bg-white/10 text-white border border-white/20">
-                <FiShield /> Admin
-              </Link>
-            )}
             {user ? (
               <>
                 <div className="flex items-center justify-center gap-2 text-sm font-bold py-2 text-white">
