@@ -453,6 +453,7 @@ function ReservationCard({
 }) {
   const phone = p?.phone ?? null;
   const customer = p?.username ?? r.created_by;
+  const [expanded, setExpanded] = useState(false);
 
   const whatsappUrl = phone
     ? createWhatsAppUrl({
@@ -470,119 +471,141 @@ function ReservationCard({
   const pending = r.price_cop - depositValue;
 
   return (
-    <div className={`bg-white rounded-xl border border-outline-variant/30 p-4 shadow-sm transition-all ${isCancelled ? "opacity-60" : ""}`}>
-      {/* Header: Time + Client */}
-      <div className="flex items-start justify-between gap-3 mb-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="bg-surface-container px-3 py-1.5 rounded-lg shrink-0">
-            <span className="text-base font-bold text-on-surface">
-              {String(r.hour).padStart(2, "0")}:00
-            </span>
-          </div>
-          <div className="min-w-0">
-            <h5 className="text-sm font-bold text-on-surface truncate">{customer}</h5>
-            {phone ? (
-              <p className="text-xs text-outline flex items-center gap-1">
-                <span className="material-symbols-outlined text-[12px]">phone</span>
-                {phone}
-              </p>
-            ) : (
-              <p className="text-xs text-amber-500 italic">Sin teléfono</p>
-            )}
-          </div>
-        </div>
-        <span className="text-[10px] text-outline-variant shrink-0">#{r.id.slice(0, 6).toUpperCase()}</span>
-      </div>
+    <div className={`bg-white rounded-xl border border-outline-variant/30 shadow-sm transition-all ${isCancelled ? "opacity-60" : ""}`}>
+      {/* Compact row - always visible */}
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center gap-2 px-3 py-2.5 text-left"
+      >
+        {/* Time */}
+        <span className="text-xs font-bold text-on-surface bg-surface-container px-2 py-1 rounded shrink-0">
+          {String(r.hour).padStart(2, "0")}:00
+        </span>
 
-      {/* Status Badges */}
-      <div className="flex flex-wrap gap-1.5 mb-3">
-        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase
+        {/* Client name */}
+        <span className="text-xs font-semibold text-on-surface truncate flex-1 min-w-0">
+          {customer}
+        </span>
+
+        {/* Status badge */}
+        <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase shrink-0
           ${isCancelled
             ? "bg-red-100 text-red-700"
             : isPendingPayment
             ? "bg-amber-100 text-amber-700"
+            : isConfirmed
+            ? "bg-blue-100 text-blue-700"
             : "bg-green-100 text-green-700"
           }`}>
-          {isCancelled ? "Cancelada" : isPendingPayment ? "Pend. Pago" : "Activa"}
+          {isCancelled ? "Cancel." : isPendingPayment ? "Pend." : isConfirmed ? (isAttended ? "Asist." : "Conf.") : "Activa"}
         </span>
-        {isConfirmed && <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px] font-bold">Confirmada</span>}
-        {isAttended && <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-[10px] font-bold">Asistió</span>}
-        {depositPaid && <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-[10px] font-bold">Abono</span>}
-      </div>
 
-      {/* Payment Info */}
-      <div className="bg-surface-container-low rounded-lg p-3 mb-3 grid grid-cols-3 gap-1 text-center">
-        <div>
-          <p className="text-[9px] uppercase font-bold text-outline">Total</p>
-          <p className="text-xs font-bold text-on-surface">{formatCOP(r.price_cop)}</p>
-        </div>
-        <div className="border-x border-outline-variant/20">
-          <p className="text-[9px] uppercase font-bold text-green-600">Pagado</p>
-          <p className="text-xs font-bold text-green-700">{formatCOP(depositValue)}</p>
-        </div>
-        <div>
-          <p className="text-[9px] uppercase font-bold text-red-500">Pendiente</p>
-          <p className="text-xs font-bold text-red-600">{formatCOP(Math.max(0, pending))}</p>
-        </div>
-      </div>
+        {/* Amount */}
+        <span className="text-xs font-bold text-on-surface shrink-0">
+          {formatCOP(r.price_cop)}
+        </span>
 
-      {/* Actions */}
-      <div className="flex flex-wrap gap-2">
-        {!isCancelled && !isConfirmed && (
-          <button
-            type="button"
-            onClick={() => onUpdate(r.id, { confirmed: true, confirmed_at: new Date().toISOString() })}
-            className="flex-1 min-w-[80px] flex items-center justify-center gap-1 py-2 bg-primary text-white rounded-lg text-xs font-bold hover:brightness-110 transition-all"
-          >
-            <span className="material-symbols-outlined text-sm">check_circle</span>
-            Confirmar
-          </button>
-        )}
-        {!isCancelled && isConfirmed && !isAttended && (
-          <button
-            type="button"
-            onClick={() => onUpdate(r.id, { attended: true, attended_at: new Date().toISOString() })}
-            className="flex-1 min-w-[80px] flex items-center justify-center gap-1 py-2 bg-secondary text-white rounded-lg text-xs font-bold hover:brightness-110 transition-all"
-          >
-            <span className="material-symbols-outlined text-sm">check_circle</span>
-            Asistió
-          </button>
-        )}
-
-        <a
-          href={whatsappUrl ?? "#"}
-          target="_blank"
-          rel="noreferrer"
-          onClick={(e) => { if (!whatsappUrl) e.preventDefault(); }}
-          className={`flex-1 min-w-[70px] flex items-center justify-center gap-1 py-2 border rounded-lg text-xs font-bold transition-colors
-            ${whatsappUrl
-              ? "border-green-600 text-green-700 hover:bg-green-50"
-              : "border-outline-variant text-outline-variant cursor-not-allowed opacity-50"
-            }`}
-        >
-          <span className="material-symbols-outlined text-sm">chat</span>
-          WhatsApp
-        </a>
-
-        {!isCancelled && (
-          <button
-            type="button"
-            onClick={() => onUpdate(r.id, { status: "cancelled" })}
-            className="flex-1 min-w-[70px] flex items-center justify-center py-2 border border-outline-variant text-on-surface-variant rounded-lg text-xs font-bold hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors"
-          >
-            Cancelar
-          </button>
-        )}
-      </div>
-
-      {/* Delete link */}
-      <button
-        type="button"
-        onClick={() => onDeleteRequest(r.id)}
-        className="mt-2 w-full text-center text-red-400 text-[10px] font-bold hover:text-red-600 py-1 transition-colors"
-      >
-        Eliminar definitivamente
+        {/* Chevron */}
+        <span className={`material-symbols-outlined text-lg text-outline transition-transform ${expanded ? "rotate-180" : ""}`}>
+          expand_more
+        </span>
       </button>
+
+      {/* Expanded details */}
+      {expanded && (
+        <div className="px-3 pb-3 border-t border-outline-variant/20 pt-2 space-y-2">
+          {/* Client info */}
+          <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center gap-1 text-outline">
+              {phone ? (
+                <>
+                  <span className="material-symbols-outlined text-[12px]">phone</span>
+                  {phone}
+                </>
+              ) : (
+                <span className="text-amber-500 italic">Sin teléfono</span>
+              )}
+            </div>
+            <span className="text-[10px] text-outline-variant">#{r.id.slice(0, 6).toUpperCase()}</span>
+          </div>
+
+          {/* Badges */}
+          <div className="flex flex-wrap gap-1">
+            {isConfirmed && <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-[9px] font-bold">Confirmada</span>}
+            {isAttended && <span className="px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded text-[9px] font-bold">Asistió</span>}
+            {depositPaid && <span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-[9px] font-bold">Abono</span>}
+          </div>
+
+          {/* Payment */}
+          <div className="bg-surface-container-low rounded-lg p-2 grid grid-cols-3 gap-1 text-center">
+            <div>
+              <p className="text-[8px] uppercase font-bold text-outline">Total</p>
+              <p className="text-[11px] font-bold text-on-surface">{formatCOP(r.price_cop)}</p>
+            </div>
+            <div className="border-x border-outline-variant/20">
+              <p className="text-[8px] uppercase font-bold text-green-600">Pagado</p>
+              <p className="text-[11px] font-bold text-green-700">{formatCOP(depositValue)}</p>
+            </div>
+            <div>
+              <p className="text-[8px] uppercase font-bold text-red-500">Pendiente</p>
+              <p className="text-[11px] font-bold text-red-600">{formatCOP(Math.max(0, pending))}</p>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex flex-wrap gap-1.5">
+            {!isCancelled && !isConfirmed && (
+              <button
+                type="button"
+                onClick={() => onUpdate(r.id, { confirmed: true, confirmed_at: new Date().toISOString() })}
+                className="flex-1 min-w-[60px] flex items-center justify-center gap-1 py-1.5 bg-primary text-white rounded-lg text-[11px] font-bold hover:brightness-110 transition-all"
+              >
+                Confirmar
+              </button>
+            )}
+            {!isCancelled && isConfirmed && !isAttended && (
+              <button
+                type="button"
+                onClick={() => onUpdate(r.id, { attended: true, attended_at: new Date().toISOString() })}
+                className="flex-1 min-w-[60px] flex items-center justify-center gap-1 py-1.5 bg-secondary text-white rounded-lg text-[11px] font-bold hover:brightness-110 transition-all"
+              >
+                Asistió
+              </button>
+            )}
+            <a
+              href={whatsappUrl ?? "#"}
+              target="_blank"
+              rel="noreferrer"
+              onClick={(e) => { if (!whatsappUrl) e.preventDefault(); }}
+              className={`flex-1 min-w-[60px] flex items-center justify-center gap-1 py-1.5 border rounded-lg text-[11px] font-bold transition-colors
+                ${whatsappUrl
+                  ? "border-green-600 text-green-700 hover:bg-green-50"
+                  : "border-outline-variant text-outline-variant cursor-not-allowed opacity-50"
+                }`}
+            >
+              WhatsApp
+            </a>
+            {!isCancelled && (
+              <button
+                type="button"
+                onClick={() => onUpdate(r.id, { status: "cancelled" })}
+                className="flex-1 min-w-[60px] flex items-center justify-center py-1.5 border border-outline-variant text-on-surface-variant rounded-lg text-[11px] font-bold hover:bg-red-50 hover:text-red-600 transition-colors"
+              >
+                Cancelar
+              </button>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => onDeleteRequest(r.id)}
+            className="w-full text-center text-red-400 text-[10px] font-bold hover:text-red-600 transition-colors"
+          >
+            Eliminar definitivamente
+          </button>
+        </div>
+      )}
     </div>
   );
 }
