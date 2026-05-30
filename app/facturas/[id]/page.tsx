@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { FiArrowLeft, FiPrinter, FiDownload, FiCheckCircle, FiLoader, FiAlertTriangle } from "react-icons/fi";
+import { FiArrowLeft, FiPrinter, FiCheckCircle, FiLoader, FiAlertTriangle } from "react-icons/fi";
 import { Button } from "../../../components/Button";
 import { createSupabaseBrowserClient } from "../../../lib/supabase/browser";
 import { BillingService, ProfileRepository } from "../../../lib/core";
@@ -35,23 +35,16 @@ export default function InvoicePage() {
       setError(null);
 
       try {
-        // Traer factura y la reserva asociada
         const inv = await billingService.getInvoiceDetail(id);
-
         if (!inv) {
           setError("Factura no encontrada.");
           setLoading(false);
           return;
         }
-
         setInvoice(inv);
 
-        // Traer el perfil del cliente
         const prof = await profileRepo.getProfile(inv.user_id);
-
-        if (prof) {
-          setProfile(prof);
-        }
+        if (prof) setProfile(prof);
       } catch (err: any) {
         setError(err.message || "Error al cargar la factura");
       } finally {
@@ -59,22 +52,15 @@ export default function InvoicePage() {
       }
     }
 
-    if (id) {
-      loadInvoiceData();
-    }
+    if (id) loadInvoiceData();
   }, [id, billingService, profileRepo]);
 
-  const handlePrint = () => {
-    window.print();
-  };
+  const handlePrint = () => window.print();
 
   if (loading) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center bg-zinc-50">
-        <div className="flex flex-col items-center gap-3">
-          <FiLoader className="animate-spin text-4xl text-secondary" />
-          <span className="text-sm font-medium text-zinc-600">Cargando factura...</span>
-        </div>
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <FiLoader className="animate-spin text-3xl text-primary" />
       </div>
     );
   }
@@ -83,9 +69,9 @@ export default function InvoicePage() {
     return (
       <div className="mx-auto max-w-md py-16 px-6 text-center">
         <FiAlertTriangle className="mx-auto text-5xl text-amber-500 mb-4" />
-        <h2 className="text-xl font-bold">{error || "Factura no encontrada"}</h2>
+        <h2 className="text-lg font-bold">{error || "Factura no encontrada"}</h2>
         <Button onClick={() => router.back()} className="mt-6 mx-auto">
-          <FiArrowLeft /> Volver atrás
+          <FiArrowLeft /> Volver
         </Button>
       </div>
     );
@@ -93,144 +79,161 @@ export default function InvoicePage() {
 
   const reservation = invoice.reservations;
   const pendingAmount = invoice.amount_total - invoice.amount_paid;
+  const isPaid = invoice.payment_status === "paid";
+  const isCancelled = invoice.payment_status === "cancelled";
+
+  const statusConfig: Record<string, { label: string; cls: string; icon: string }> = {
+    paid: { label: "Pagado", cls: "bg-green-100 text-green-700 border-green-200", icon: "check_circle" },
+    partially_paid: { label: "Anticipo Abonado", cls: "bg-blue-100 text-blue-700 border-blue-200", icon: "schedule" },
+    cancelled: { label: "Anulada", cls: "bg-zinc-100 text-zinc-600 border-zinc-200", icon: "cancel" },
+    pending: { label: "Pendiente de Pago", cls: "bg-amber-100 text-amber-700 border-amber-200", icon: "pending" },
+  };
+  const status = statusConfig[invoice.payment_status] || statusConfig.pending;
 
   return (
-    <div className="min-h-screen bg-zinc-100 py-12 px-6 print:bg-white print:py-0 print:px-0">
-      <div className="mx-auto max-w-3xl">
-        {/* Navigation & Action buttons - hidden on print */}
-        <div className="mb-6 flex items-center justify-between print:hidden">
+    <div className="min-h-screen bg-surface py-6 px-4 lg:py-12 lg:px-6 print:bg-white print:py-0 print:px-0">
+      <div className="mx-auto max-w-2xl">
+        {/* Top bar - hidden on print */}
+        <div className="mb-4 flex items-center justify-between print:hidden">
           <button
             onClick={() => router.back()}
-            className="group inline-flex items-center gap-1 text-sm font-semibold text-secondary hover:underline"
+            className="inline-flex items-center gap-1.5 text-sm font-bold text-primary hover:underline"
           >
-            <FiArrowLeft className="transition-transform group-hover:-translate-x-0.5" /> Volver
+            <FiArrowLeft /> Volver
           </button>
-          <div className="flex gap-2">
-            <Button
-              onClick={handlePrint}
-              className="border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50"
-            >
-              <FiPrinter /> Imprimir / Descargar PDF
-            </Button>
-          </div>
+          <button
+            onClick={handlePrint}
+            className="inline-flex items-center gap-1.5 px-3 py-2 bg-white border border-outline-variant/40 rounded-lg text-xs font-bold text-on-surface hover:bg-surface-container transition-colors"
+          >
+            <FiPrinter /> Imprimir
+          </button>
         </div>
 
         {/* Invoice Card */}
-        <div className="rounded-3xl border border-zinc-200 bg-white p-8 md:p-12 shadow-soft print:border-none print:shadow-none print:p-0">
-          {/* Invoice Header */}
-          <div className="flex flex-col gap-6 md:flex-row md:justify-between border-b border-zinc-100 pb-8">
-            <div>
-              <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-red-600 font-black text-white text-lg mb-4">
-                CS
-              </span>
-              <h2 className="text-2xl font-black tracking-tight text-zinc-900">Cancha Sintética CS</h2>
-              <p className="text-xs text-zinc-500 mt-1">Nit: 123456789-0</p>
-              <p className="text-xs text-zinc-500">Dirección: Barrio El Recreo, Canchas Sintéticas CS</p>
-              <p className="text-xs text-zinc-500">Tel: {process.env.NEXT_PUBLIC_ADMIN_WHATSAPP_NUMBER || "3186025827"}</p>
-            </div>
+        <div className="bg-white rounded-2xl border border-outline-variant/30 shadow-sm overflow-hidden print:border-none print:shadow-none print:rounded-none">
+          {/* Status Banner */}
+          <div className={`px-4 py-3 flex items-center gap-2 border-b ${status.cls}`}>
+            <span className="material-symbols-outlined text-lg">{status.icon}</span>
+            <span className="text-sm font-bold">{status.label}</span>
+            <span className="ml-auto text-xs font-semibold opacity-70">
+              {invoice.invoice_number}
+            </span>
+          </div>
 
-            <div className="text-left md:text-right space-y-1">
-              <span className="inline-block px-3 py-1 bg-red-50 text-red-700 font-extrabold text-xs rounded-full uppercase">
-                Factura de Venta
-              </span>
-              <h3 className="text-lg font-bold text-zinc-950 mt-2">{invoice.invoice_number}</h3>
-              <p className="text-xs text-zinc-500">
-                Fecha Emisión: {new Date(invoice.created_at).toLocaleString("es-CO", { dateStyle: "medium" })}
-              </p>
-              <p className="text-xs text-zinc-500">
-                Estado Pago:{" "}
-                <span className="font-bold text-zinc-800">
-                  {invoice.payment_status === "paid"
-                    ? "PAGADO"
-                    : invoice.payment_status === "partially_paid"
-                    ? "ANTICIPO ABONADO"
-                    : invoice.payment_status === "cancelled"
-                    ? "ANULADO"
-                    : "PENDIENTE"}
-                </span>
-              </p>
+          {/* Header */}
+          <div className="px-4 py-5 sm:px-6 border-b border-outline-variant/20">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-8 h-8 rounded-lg bg-primary-container flex items-center justify-center">
+                    <span className="material-symbols-outlined text-lg text-on-primary-container">sports_soccer</span>
+                  </div>
+                  <span className="text-sm font-black text-on-surface">Sintéticas Panamericana</span>
+                </div>
+                <p className="text-[11px] text-on-surface-variant">Sistema de Reservas</p>
+              </div>
+              <div className="text-right">
+                <p className="text-lg font-black text-on-surface">{invoice.invoice_number}</p>
+                <p className="text-[11px] text-on-surface-variant">
+                  {new Date(invoice.created_at).toLocaleDateString("es-CO", { day: "numeric", month: "short", year: "numeric" })}
+                </p>
+              </div>
             </div>
           </div>
 
-          {/* Client Details */}
-          <div className="py-8 border-b border-zinc-100 grid md:grid-cols-2 gap-6">
+          {/* Client + Reservation */}
+          <div className="px-4 py-4 sm:px-6 grid grid-cols-1 sm:grid-cols-2 gap-4 border-b border-outline-variant/20">
             <div>
-              <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-500">Facturado a:</h4>
-              <p className="font-extrabold text-zinc-900 mt-1">{profile?.username || "Usuario General"}</p>
-              <p className="text-xs text-zinc-600 mt-0.5">Teléfono: {profile?.phone || "No especificado"}</p>
+              <p className="text-[10px] uppercase font-bold text-outline tracking-wider mb-1">Cliente</p>
+              <p className="text-sm font-bold text-on-surface">{profile?.username || "Usuario"}</p>
+              <p className="text-xs text-on-surface-variant">{profile?.phone || "Sin teléfono"}</p>
             </div>
             <div>
-              <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-500">Detalles de la Reserva:</h4>
-              <p className="font-extrabold text-zinc-900 mt-1">Cancha {reservation?.court_id}</p>
-              <p className="text-xs text-zinc-600 mt-0.5">Fecha: {reservation?.date}</p>
-              <p className="text-xs text-zinc-600">Hora: {String(reservation?.hour).padStart(2, "0")}:00</p>
-              {reservation?.wompi_transaction_id && (
-                <div className="mt-2 p-2 bg-zinc-50 rounded-xl border border-zinc-200">
-                  <span className="block text-2xs font-extrabold uppercase text-zinc-500 tracking-wider">ID Transacción (Wompi)</span>
-                  <span className="font-mono text-xs font-bold text-zinc-800 break-all">{reservation.wompi_transaction_id}</span>
-                </div>
+              <p className="text-[10px] uppercase font-bold text-outline tracking-wider mb-1">Reserva</p>
+              {reservation ? (
+                <>
+                  <p className="text-sm font-bold text-on-surface">Cancha {reservation.court_id}</p>
+                  <p className="text-xs text-on-surface-variant">
+                    {reservation.date} • {String(reservation.hour).padStart(2, "0")}:00
+                  </p>
+                </>
+              ) : (
+                <p className="text-xs text-red-500 italic">Sin reserva asociada</p>
               )}
             </div>
           </div>
 
-          {/* Details Table */}
-          <div className="py-8">
-            <table className="w-full border-collapse text-left text-sm">
-              <thead>
-                <tr className="border-b border-zinc-200 text-xs font-bold uppercase tracking-wider text-zinc-500">
-                  <th className="py-3">Descripción</th>
-                  <th className="py-3 text-right">Cantidad</th>
-                  <th className="py-3 text-right">Precio Unitario</th>
-                  <th className="py-3 text-right">Total</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-100">
-                <tr>
-                  <td className="py-4">
-                    <p className="font-bold text-zinc-900">Alquiler de Cancha Sintética (1 hora)</p>
-                    <p className="text-xs text-zinc-500 mt-0.5">
-                      Cancha {reservation?.court_id} - {reservation?.date} @ {String(reservation?.hour).padStart(2, "0")}:00
-                    </p>
-                  </td>
-                  <td className="py-4 text-right">1</td>
-                  <td className="py-4 text-right">{formatCOP(invoice.amount_total)}</td>
-                  <td className="py-4 text-right font-bold text-zinc-950">{formatCOP(invoice.amount_total)}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          {/* Totals Summary */}
-          <div className="border-t border-zinc-200 pt-8 flex justify-end">
-            <div className="w-full md:w-64 space-y-3 text-sm">
-              <div className="flex justify-between text-zinc-600">
-                <span>Subtotal</span>
-                <span>{formatCOP(invoice.amount_total)}</span>
-              </div>
-              <div className="flex justify-between text-zinc-600">
-                <span>Total Impuestos (0%)</span>
-                <span>$0</span>
-              </div>
-              <div className="flex justify-between font-bold text-zinc-900 border-b border-zinc-100 pb-3">
-                <span>Total</span>
-                <span>{formatCOP(invoice.amount_total)}</span>
-              </div>
-              <div className="flex justify-between text-green-700 font-bold">
-                <span>Monto Abonado</span>
-                <span>{formatCOP(invoice.amount_paid)}</span>
-              </div>
-              <div className="flex justify-between text-zinc-900 font-extrabold text-base bg-zinc-50 p-2.5 rounded-xl border border-zinc-100">
-                <span>Saldo Pendiente</span>
-                <span>{formatCOP(pendingAmount)}</span>
+          {/* Line Items */}
+          <div className="px-4 py-4 sm:px-6 border-b border-outline-variant/20">
+            <p className="text-[10px] uppercase font-bold text-outline tracking-wider mb-3">Detalle</p>
+            <div className="bg-surface-container-low rounded-xl p-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-on-surface">Alquiler Cancha Sintética</p>
+                  <p className="text-[11px] text-on-surface-variant mt-0.5">
+                    1 hora • Cancha {reservation?.court_id} • {reservation?.date} @ {String(reservation?.hour ?? 0).padStart(2, "0")}:00
+                  </p>
+                </div>
+                <p className="text-sm font-bold text-on-surface shrink-0">{formatCOP(invoice.amount_total)}</p>
               </div>
             </div>
           </div>
 
-          {/* Invoice Footer */}
-          <div className="mt-12 border-t border-zinc-100 pt-8 text-center text-xs text-zinc-500 space-y-1">
-            <p className="font-bold text-zinc-700">¡Gracias por tu confianza y preferencia!</p>
-            <p>Esta factura fue generada electrónicamente por el sistema de reservas CS.</p>
-            <p>Si tienes alguna inquietud, contáctanos a través de nuestros canales oficiales.</p>
+          {/* Totals */}
+          <div className="px-4 py-4 sm:px-6 space-y-2">
+            <div className="flex justify-between text-sm text-on-surface-variant">
+              <span>Subtotal</span>
+              <span>{formatCOP(invoice.amount_total)}</span>
+            </div>
+            <div className="flex justify-between text-sm text-on-surface-variant">
+              <span>Impuestos (0%)</span>
+              <span>$0</span>
+            </div>
+            <div className="flex justify-between text-sm font-bold text-on-surface pt-2 border-t border-outline-variant/20">
+              <span>Total</span>
+              <span>{formatCOP(invoice.amount_total)}</span>
+            </div>
+
+            {invoice.amount_paid > 0 && (
+              <div className="flex justify-between text-sm font-bold text-green-700 pt-1">
+                <span className="flex items-center gap-1">
+                  <FiCheckCircle className="text-xs" /> Abonado
+                </span>
+                <span>{formatCOP(invoice.amount_paid)}</span>
+              </div>
+            )}
+
+            {!isPaid && !isCancelled && (
+              <div className="flex justify-between items-center mt-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
+                <span className="text-sm font-bold text-amber-800">Saldo Pendiente</span>
+                <span className="text-lg font-black text-amber-800">{formatCOP(pendingAmount)}</span>
+              </div>
+            )}
+
+            {isPaid && (
+              <div className="flex justify-between items-center mt-2 bg-green-50 border border-green-200 rounded-xl px-3 py-2.5">
+                <span className="text-sm font-bold text-green-700 flex items-center gap-1">
+                  <FiCheckCircle /> Pagado completo
+                </span>
+                <span className="text-lg font-black text-green-700">{formatCOP(invoice.amount_total)}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Wompi Transaction */}
+          {reservation?.wompi_transaction_id && (
+            <div className="px-4 pb-4 sm:px-6">
+              <div className="bg-surface-container-low rounded-xl p-3 border border-outline-variant/20">
+                <p className="text-[10px] uppercase font-bold text-outline tracking-wider mb-1">Transacción Wompi</p>
+                <p className="font-mono text-xs text-on-surface break-all">{reservation.wompi_transaction_id}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Footer */}
+          <div className="px-4 py-4 sm:px-6 bg-surface-container-low border-t border-outline-variant/20 text-center">
+            <p className="text-xs font-semibold text-on-surface-variant">¡Gracias por tu preferencia!</p>
+            <p className="text-[10px] text-outline mt-0.5">Factura generada por Sintéticas Panamericana</p>
           </div>
         </div>
       </div>
