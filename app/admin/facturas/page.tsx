@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { FiLoader, FiSearch, FiCheck, FiX, FiFileText, FiRefreshCw, FiDollarSign } from "react-icons/fi";
+import { FiLoader, FiCheck, FiX, FiFileText, FiRefreshCw } from "react-icons/fi";
 import { Button, LinkButton } from "../../../components/Button";
 import { createSupabaseBrowserClient } from "../../../lib/supabase/browser";
 import { BillingService, ProfileRepository } from "../../../lib/core";
@@ -20,12 +20,9 @@ export default function AdminInvoicesPage() {
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
-  
-  // Search and filters
+
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-
-  // Load profiles as a dictionary for quick lookup by user_id
   const [profiles, setProfiles] = useState<Record<string, { username: string; phone: string }>>({});
 
   const billingService = useMemo(() => new BillingService(supabase), [supabase]);
@@ -34,10 +31,7 @@ export default function AdminInvoicesPage() {
   async function loadData() {
     setLoading(true);
     try {
-      // Fetch all invoices using service layer
       const invData = await billingService.getAllInvoices();
-
-      // Fetch all profiles using profile repository
       const profData = await profileRepo.getAllProfiles();
 
       if (profData) {
@@ -56,7 +50,6 @@ export default function AdminInvoicesPage() {
       }
     } catch (err: any) {
       console.error(err);
-      alert("Error al cargar datos: " + err.message);
     } finally {
       setLoading(false);
     }
@@ -74,7 +67,7 @@ export default function AdminInvoicesPage() {
       await billingService.markInvoiceAsPaid(invoiceId, amountTotal, inv?.reservation_id);
       await loadData();
     } catch (error: any) {
-      alert("Error al actualizar la factura: " + error.message);
+      alert("Error: " + error.message);
     } finally {
       setUpdatingId(null);
     }
@@ -87,7 +80,7 @@ export default function AdminInvoicesPage() {
       await billingService.markInvoiceAsCancelled(invoiceId, inv?.reservation_id);
       await loadData();
     } catch (error: any) {
-      alert("Error al anular la factura: " + error.message);
+      alert("Error: " + error.message);
     } finally {
       setUpdatingId(null);
     }
@@ -96,12 +89,10 @@ export default function AdminInvoicesPage() {
   const filteredInvoices = useMemo(() => {
     return invoices.filter((inv) => {
       const profile = profiles[inv.user_id] || { username: "", phone: "" };
-      const res = inv.reservations || {};
       const matchesSearch =
         inv.invoice_number.toLowerCase().includes(search.toLowerCase()) ||
         profile.username.toLowerCase().includes(search.toLowerCase()) ||
-        profile.phone.includes(search) ||
-        (res.wompi_transaction_id && res.wompi_transaction_id.toLowerCase().includes(search.toLowerCase()));
+        profile.phone.includes(search);
 
       const matchesStatus =
         statusFilter === "all" || inv.payment_status === statusFilter;
@@ -112,180 +103,209 @@ export default function AdminInvoicesPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <FiLoader className="animate-spin text-4xl text-secondary" />
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <FiLoader className="animate-spin text-3xl text-primary" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Title */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-black tracking-tight">Administración de Facturas</h2>
-          <p className="mt-1 text-sm text-zinc-600">
-            Visualiza y actualiza el estado de las facturas generadas por alquiler de canchas.
-          </p>
+          <h2 className="text-xl lg:text-2xl font-black tracking-tight text-on-surface">Facturas</h2>
+          <p className="text-sm text-on-surface-variant mt-0.5">{filteredInvoices.length} facturas</p>
         </div>
-        <Button onClick={loadData} className="border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100 sm:w-auto">
-          <FiRefreshCw /> Recargar
-        </Button>
+        <button
+          onClick={loadData}
+          className="shrink-0 flex items-center gap-1.5 px-3 py-2 bg-white border border-outline-variant/40 rounded-lg text-xs font-bold text-on-surface hover:bg-surface-container transition-colors"
+        >
+          <FiRefreshCw className="text-sm" /> Recargar
+        </button>
       </div>
 
-      {/* Filters & Search */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <div className="flex flex-1 items-center gap-3 rounded-2xl border border-zinc-200 bg-white px-4 py-3">
-          <FiSearch className="text-zinc-400" />
+      {/* Search + Filter */}
+      <div className="flex flex-col sm:flex-row gap-2">
+        <div className="relative flex-1">
+          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-xl">search</span>
           <input
             type="text"
-            placeholder="Buscar por cliente, teléfono o factura..."
+            placeholder="Buscar cliente o factura..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-transparent text-sm outline-none"
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-outline-variant/40 bg-white text-sm outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm outline-none min-w-[180px]"
+          className="rounded-xl border border-outline-variant/40 bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary sm:w-[160px]"
         >
-          <option value="all">Todos los estados</option>
+          <option value="all">Todos</option>
           <option value="pending">Pendiente</option>
-          <option value="partially_paid">Anticipo Pagado</option>
-          <option value="paid">Pagado Completo</option>
+          <option value="partially_paid">Anticipo</option>
+          <option value="paid">Pagado</option>
           <option value="cancelled">Anulado</option>
         </select>
       </div>
 
-      {/* Invoices List */}
-      <div className="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-soft">
-        <div className="min-w-full overflow-x-auto">
-          <table className="min-w-full divide-y divide-zinc-200 text-left text-sm">
-            <thead className="bg-zinc-50 text-xs font-bold uppercase tracking-wider text-zinc-500">
-              <tr>
-                <th className="px-6 py-4">Factura</th>
-                <th className="px-6 py-4">Cliente</th>
-                <th className="px-6 py-4">Reserva</th>
-                <th className="px-6 py-4">Montos</th>
-                <th className="px-6 py-4">Estado</th>
-                <th className="px-6 py-4 text-right">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-200">
-              {filteredInvoices.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-zinc-500">
-                    No se encontraron facturas con los filtros seleccionados.
-                  </td>
-                </tr>
-              ) : (
-                filteredInvoices.map((inv) => {
-                  const client = profiles[inv.user_id] || { username: "Cargando...", phone: "Cargando..." };
-                  const res = inv.reservations;
-                  const isUpdating = updatingId === inv.id;
-
-                  return (
-                    <tr key={inv.id} className="hover:bg-zinc-50/55 transition-colors">
-                      <td className="whitespace-nowrap px-6 py-4">
-                        <div className="font-extrabold text-zinc-900">{inv.invoice_number}</div>
-                        <div className="text-2xs text-zinc-500 mt-0.5">
-                          {new Date(inv.created_at).toLocaleDateString("es-CO")}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="font-bold text-zinc-900">{client.username}</div>
-                        <div className="text-xs text-zinc-500 mt-0.5">{client.phone}</div>
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-xs">
-                        {res ? (
-                          <>
-                            <div className="font-semibold text-zinc-800">
-                              Cancha {res.court_id} - {res.date}
-                            </div>
-                            <div className="text-zinc-500 mt-0.5">
-                              Hora: {String(res.hour).padStart(2, "0")}:00
-                            </div>
-                            {res.wompi_transaction_id && (
-                              <div className="mt-1 font-mono text-[10px] text-zinc-500 bg-zinc-100 px-1.5 py-0.5 rounded max-w-[120px] truncate" title={res.wompi_transaction_id}>
-                                Tx: {res.wompi_transaction_id}
-                              </div>
-                            )}
-                          </>
-                        ) : (
-                          <span className="text-red-500">Sin Reserva Asociada</span>
-                        )}
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4">
-                        <div className="text-xs text-zinc-600">
-                          Total: <span className="font-bold">{formatCOP(inv.amount_total)}</span>
-                        </div>
-                        <div className="text-xs text-green-700 mt-0.5">
-                          Abonado: <span className="font-bold">{formatCOP(inv.amount_paid)}</span>
-                        </div>
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4">
-                        <span
-                          className={`inline-block px-2.5 py-0.5 rounded-full text-2xs font-extrabold uppercase ${
-                            inv.payment_status === "paid"
-                              ? "bg-green-100 text-green-800"
-                              : inv.payment_status === "partially_paid"
-                              ? "bg-blue-100 text-blue-800"
-                              : inv.payment_status === "cancelled"
-                              ? "bg-zinc-100 text-zinc-700"
-                              : "bg-amber-100 text-amber-800"
-                          }`}
-                        >
-                          {inv.payment_status === "paid"
-                            ? "Pagado"
-                            : inv.payment_status === "partially_paid"
-                            ? "Anticipo Pagado"
-                            : inv.payment_status === "cancelled"
-                            ? "Anulado"
-                            : "Pendiente"}
-                        </span>
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-right text-xs">
-                        <div className="flex justify-end gap-2">
-                          <LinkButton
-                            href={`/facturas/${inv.id}`}
-                            variant="ghost"
-                            className="border border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-100 px-3 py-1.5 rounded-lg flex items-center gap-1"
-                          >
-                            <FiFileText /> Detalle
-                          </LinkButton>
-                          
-                          {inv.payment_status !== "paid" && inv.payment_status !== "cancelled" && (
-                            <Button
-                              type="button"
-                              onClick={() => markAsPaid(inv.id, inv.amount_total)}
-                              disabled={isUpdating}
-                              className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg flex items-center gap-1"
-                            >
-                              <FiCheck /> Pagado
-                            </Button>
-                          )}
-
-                          {inv.payment_status !== "cancelled" && (
-                            <Button
-                              type="button"
-                              onClick={() => markAsCancelled(inv.id)}
-                              disabled={isUpdating}
-                              className="bg-zinc-100 border border-zinc-200 text-zinc-700 hover:bg-zinc-200 px-3 py-1.5 rounded-lg flex items-center gap-1"
-                            >
-                              <FiX /> Anular
-                            </Button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+      {/* Invoice List */}
+      {filteredInvoices.length === 0 ? (
+        <div className="rounded-xl border border-outline-variant/30 bg-white p-8 text-center text-sm text-on-surface-variant">
+          No se encontraron facturas.
         </div>
-      </div>
+      ) : (
+        <div className="space-y-2">
+          {filteredInvoices.map((inv) => (
+            <InvoiceCard
+              key={inv.id}
+              invoice={inv}
+              client={profiles[inv.user_id] || { username: "Usuario", phone: "—" }}
+              isUpdating={updatingId === inv.id}
+              onMarkPaid={() => markAsPaid(inv.id, inv.amount_total)}
+              onMarkCancelled={() => markAsCancelled(inv.id)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Invoice Card ─────────────────────────────────────────────────────────────
+
+function InvoiceCard({
+  invoice: inv,
+  client,
+  isUpdating,
+  onMarkPaid,
+  onMarkCancelled,
+}: {
+  invoice: any;
+  client: { username: string; phone: string };
+  isUpdating: boolean;
+  onMarkPaid: () => void;
+  onMarkCancelled: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const res = inv.reservations;
+
+  const statusConfig: Record<string, { label: string; cls: string }> = {
+    paid: { label: "Pagado", cls: "bg-green-100 text-green-700" },
+    partially_paid: { label: "Anticipo", cls: "bg-blue-100 text-blue-700" },
+    cancelled: { label: "Anulado", cls: "bg-zinc-100 text-zinc-600" },
+    pending: { label: "Pendiente", cls: "bg-amber-100 text-amber-700" },
+  };
+
+  const status = statusConfig[inv.payment_status] || statusConfig.pending;
+
+  return (
+    <div className="bg-white rounded-xl border border-outline-variant/30 shadow-sm overflow-hidden">
+      {/* Compact row */}
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center gap-2 px-3 py-3 text-left"
+      >
+        {/* Invoice number */}
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold text-on-surface">{inv.invoice_number}</p>
+          <p className="text-[11px] text-on-surface-variant truncate">{client.username}</p>
+        </div>
+
+        {/* Amount */}
+        <span className="text-xs font-bold text-on-surface shrink-0">{formatCOP(inv.amount_total)}</span>
+
+        {/* Status */}
+        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase shrink-0 ${status.cls}`}>
+          {status.label}
+        </span>
+
+        {/* Chevron */}
+        <span className={`material-symbols-outlined text-lg text-outline transition-transform ${expanded ? "rotate-180" : ""}`}>
+          expand_more
+        </span>
+      </button>
+
+      {/* Expanded */}
+      {expanded && (
+        <div className="px-3 pb-3 border-t border-outline-variant/20 pt-2 space-y-3">
+          {/* Client + Reservation info */}
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div>
+              <p className="text-[10px] uppercase font-bold text-outline">Cliente</p>
+              <p className="font-semibold text-on-surface">{client.username}</p>
+              <p className="text-on-surface-variant">{client.phone}</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase font-bold text-outline">Reserva</p>
+              {res ? (
+                <>
+                  <p className="font-semibold text-on-surface">Cancha {res.court_id} • {res.date}</p>
+                  <p className="text-on-surface-variant">Hora: {String(res.hour).padStart(2, "0")}:00</p>
+                </>
+              ) : (
+                <p className="text-red-500 italic">Sin reserva</p>
+              )}
+            </div>
+          </div>
+
+          {/* Amounts */}
+          <div className="bg-surface-container-low rounded-lg p-2 grid grid-cols-3 gap-1 text-center">
+            <div>
+              <p className="text-[8px] uppercase font-bold text-outline">Total</p>
+              <p className="text-[11px] font-bold text-on-surface">{formatCOP(inv.amount_total)}</p>
+            </div>
+            <div className="border-x border-outline-variant/20">
+              <p className="text-[8px] uppercase font-bold text-green-600">Pagado</p>
+              <p className="text-[11px] font-bold text-green-700">{formatCOP(inv.amount_paid)}</p>
+            </div>
+            <div>
+              <p className="text-[8px] uppercase font-bold text-red-500">Pendiente</p>
+              <p className="text-[11px] font-bold text-red-600">{formatCOP(Math.max(0, inv.amount_total - inv.amount_paid))}</p>
+            </div>
+          </div>
+
+          {/* Date */}
+          <p className="text-[10px] text-on-surface-variant">
+            Creada: {new Date(inv.created_at).toLocaleDateString("es-CO", { day: "numeric", month: "short", year: "numeric" })}
+          </p>
+
+          {/* Actions */}
+          <div className="flex flex-wrap gap-2">
+            <LinkButton
+              href={`/facturas/${inv.id}`}
+              variant="ghost"
+              className="flex-1 min-w-[70px] border border-outline-variant/40 bg-white text-on-surface text-xs px-3 py-2 rounded-lg"
+            >
+              <FiFileText /> Detalle
+            </LinkButton>
+
+            {inv.payment_status !== "paid" && inv.payment_status !== "cancelled" && (
+              <Button
+                type="button"
+                onClick={onMarkPaid}
+                disabled={isUpdating}
+                className="flex-1 min-w-[70px] bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-2 rounded-lg"
+              >
+                <FiCheck /> Pagado
+              </Button>
+            )}
+
+            {inv.payment_status !== "cancelled" && (
+              <Button
+                type="button"
+                onClick={onMarkCancelled}
+                disabled={isUpdating}
+                className="flex-1 min-w-[70px] bg-zinc-100 border border-zinc-200 text-zinc-700 hover:bg-zinc-200 text-xs px-3 py-2 rounded-lg"
+              >
+                <FiX /> Anular
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
