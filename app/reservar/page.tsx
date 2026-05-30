@@ -36,6 +36,7 @@ export default function ReservarPage() {
   const [phoneDraft, setPhoneDraft] = useState<string>("");
   const [formError, setFormError] = useState<string | null>(null);
   const [dbRules, setDbRules] = useState<any[]>([]);
+  const [depositPercent, setDepositPercent] = useState<number>(30);
 
   const profileRepo = useMemo(() => new ProfileRepository(supabase), [supabase]);
   const pricingService = useMemo(() => new PricingService(supabase), [supabase]);
@@ -57,6 +58,15 @@ export default function ReservarPage() {
     pricingService.loadRules().then(() => {
       setDbRules([...(pricingService as any).rules]);
     });
+    // Cargar porcentaje de anticipo desde BD
+    supabase
+      .from("payment_settings")
+      .select("deposit_percent")
+      .eq("id", 1)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.deposit_percent) setDepositPercent(data.deposit_percent);
+      });
   }, [supabase, profileRepo, pricingService]);
 
   const hourOptions = useMemo(() => {
@@ -352,8 +362,8 @@ export default function ReservarPage() {
                         <span className="font-bold">{formatCOP(price)}</span>
                       </div>
                       <div className="flex justify-between text-xs text-primary-fixed">
-                        <span>Anticipo ({depositInfo ? `${depositInfo.percent}%` : "30%"})</span>
-                        <span className="font-bold">{formatCOP(price * 0.3)}</span>
+                        <span>Anticipo ({depositInfo ? `${depositInfo.percent}%` : `${depositPercent}%`})</span>
+                        <span className="font-bold">{formatCOP(Math.round(price * (depositInfo ? depositInfo.percent : depositPercent) / 100))}</span>
                       </div>
                     </div>
                   </div>
