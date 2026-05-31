@@ -77,14 +77,12 @@ export default function ReservarPage() {
     pricingService.loadRules().then(() => {
       setDbRules([...(pricingService as any).rules]);
     });
-    supabase
-      .from("payment_settings")
-      .select("deposit_percent")
-      .eq("id", 1)
-      .maybeSingle()
-      .then(({ data }) => {
+    fetch("/api/settings/deposit")
+      .then((res) => res.json())
+      .then((data) => {
         if (data?.deposit_percent) setDepositPercent(data.deposit_percent);
-      });
+      })
+      .catch(() => {});
   }, [supabase, profileRepo, pricingService]);
 
   const hourOptions = useMemo(() => {
