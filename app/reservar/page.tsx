@@ -597,10 +597,7 @@ export default function ReservarPage() {
                       <span className="material-symbols-outlined text-primary text-[18px] md:text-[20px]">cancel</span>
                       Cancelaciones con 24h de antelación.
                     </li>
-                    <li className="flex gap-2">
-                      <span className="material-symbols-outlined text-primary text-[18px] md:text-[20px]">check_circle</span>
-                      Incluye petos e hidratación básica.
-                    </li>
+
                   </ul>
                 </div>
               </div>
