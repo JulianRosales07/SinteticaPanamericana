@@ -368,45 +368,45 @@ export default function ReservarPage() {
                 {/* Step 2 & 3: Date & Time */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Date Selection - Calendar */}
-                  <section className="space-y-6">
+                  <section className="space-y-4 md:space-y-6">
                     <div className="flex items-center gap-2">
-                      <span className="material-symbols-outlined text-primary">calendar_month</span>
-                      <h2 className="font-[family-name:var(--font-montserrat)] text-xl font-semibold uppercase tracking-wider">
+                      <span className="material-symbols-outlined text-primary text-[20px] md:text-[24px]">calendar_month</span>
+                      <h2 className="font-[family-name:var(--font-montserrat)] text-sm md:text-xl font-semibold uppercase tracking-wider">
                         2. Selecciona la Fecha
                       </h2>
                     </div>
-                    <div className="bg-surface-container-lowest rounded-xl border border-outline-variant/30 p-6 shadow-sm">
+                    <div className="bg-surface-container-lowest rounded-xl border border-outline-variant/30 p-4 md:p-6 shadow-sm">
                       {/* Calendar Header */}
-                      <div className="flex justify-between items-center mb-6">
+                      <div className="flex justify-between items-center mb-4 md:mb-6">
                         <button
                           type="button"
                           onClick={prevMonth}
-                          className="p-2 hover:bg-surface-container rounded-full transition-colors"
+                          className="p-1.5 md:p-2 hover:bg-surface-container rounded-full transition-colors"
                         >
-                          <span className="material-symbols-outlined">chevron_left</span>
+                          <span className="material-symbols-outlined text-[20px] md:text-[24px]">chevron_left</span>
                         </button>
-                        <span className="font-[family-name:var(--font-montserrat)] text-xl font-semibold">
+                        <span className="font-[family-name:var(--font-montserrat)] text-sm md:text-xl font-semibold">
                           {MONTH_NAMES[calMonth]} {calYear}
                         </span>
                         <button
                           type="button"
                           onClick={nextMonth}
-                          className="p-2 hover:bg-surface-container rounded-full transition-colors"
+                          className="p-1.5 md:p-2 hover:bg-surface-container rounded-full transition-colors"
                         >
-                          <span className="material-symbols-outlined">chevron_right</span>
+                          <span className="material-symbols-outlined text-[20px] md:text-[24px]">chevron_right</span>
                         </button>
                       </div>
                       {/* Day headers */}
-                      <div className="grid grid-cols-7 gap-2 text-center mb-4">
+                      <div className="grid grid-cols-7 gap-1 md:gap-2 text-center mb-3 md:mb-4">
                         {DAY_NAMES.map((d, i) => (
-                          <span key={i} className="text-xs font-semibold text-secondary">{d}</span>
+                          <span key={i} className="text-[10px] md:text-xs font-semibold text-secondary">{d}</span>
                         ))}
                       </div>
                       {/* Calendar Grid */}
-                      <div className="grid grid-cols-7 gap-2">
+                      <div className="grid grid-cols-7 gap-1 md:gap-2">
                         {/* Empty slots */}
                         {Array.from({ length: firstDay }).map((_, i) => (
-                          <div key={`empty-${i}`} className="h-10" />
+                          <div key={`empty-${i}`} className="h-8 md:h-10" />
                         ))}
                         {/* Days */}
                         {Array.from({ length: daysInMonth }).map((_, i) => {
@@ -422,7 +422,7 @@ export default function ReservarPage() {
                               type="button"
                               disabled={isPast}
                               onClick={() => !isPast && handleDateSelect(day)}
-                              className={`h-10 w-full rounded-lg text-xs font-semibold transition-all ${
+                              className={`h-8 md:h-10 w-full rounded-lg text-[11px] md:text-xs font-semibold transition-all ${
                                 isPast
                                   ? "text-outline-variant cursor-not-allowed"
                                   : "hover:bg-primary-container/20"
@@ -444,14 +444,14 @@ export default function ReservarPage() {
                   </section>
 
                   {/* Time Selection - Grid */}
-                  <section className="space-y-6">
+                  <section className="space-y-4 md:space-y-6">
                     <div className="flex items-center gap-2">
-                      <span className="material-symbols-outlined text-primary">schedule</span>
-                      <h2 className="font-[family-name:var(--font-montserrat)] text-xl font-semibold uppercase tracking-wider">
+                      <span className="material-symbols-outlined text-primary text-[20px] md:text-[24px]">schedule</span>
+                      <h2 className="font-[family-name:var(--font-montserrat)] text-sm md:text-xl font-semibold uppercase tracking-wider">
                         3. Horario
                       </h2>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-3 md:grid-cols-2 gap-2 md:gap-3">
                       {hourOptions.map((h) => {
                         const isReserved = reservedSlots.includes(String(h));
                         const isSelected = hour === h;
@@ -463,7 +463,7 @@ export default function ReservarPage() {
                             type="button"
                             disabled={isReserved}
                             onClick={() => handleTimeSelect(h)}
-                            className={`px-4 py-3 rounded-lg border-2 text-xs font-bold transition-all flex items-center justify-between ${
+                            className={`px-2 py-2 md:px-4 md:py-3 rounded-lg border-2 text-[11px] md:text-xs font-bold transition-all flex items-center justify-between ${
                               isReserved
                                 ? "bg-surface-container-high border-outline-variant/30 text-outline cursor-not-allowed opacity-50"
                                 : "bg-surface-container-lowest border-outline-variant/30 hover:border-primary"
@@ -474,7 +474,7 @@ export default function ReservarPage() {
                             }`}
                           >
                             {timeStr}
-                            <span className="material-symbols-outlined text-[16px]">
+                            <span className="material-symbols-outlined text-[14px] md:text-[16px]">
                               {isReserved ? "block" : isSelected ? "check_circle" : "add_circle"}
                             </span>
                           </button>
@@ -518,40 +518,40 @@ export default function ReservarPage() {
 
             {/* Right Column: Sticky Sidebar */}
             <aside className="lg:col-span-4">
-              <div className="sticky top-28 space-y-6">
+              <div className="sticky top-28 space-y-4 md:space-y-6">
                 {/* Summary Card */}
-                <div className="bg-inverse-surface text-surface rounded-2xl p-8 shadow-xl">
-                  <h3 className="font-[family-name:var(--font-montserrat)] text-[32px] leading-[40px] font-bold mb-8 border-b border-surface-variant/20 pb-4">
+                <div className="bg-inverse-surface text-surface rounded-2xl p-5 md:p-8 shadow-xl">
+                  <h3 className="font-[family-name:var(--font-montserrat)] text-xl md:text-[32px] md:leading-[40px] font-bold mb-5 md:mb-8 border-b border-surface-variant/20 pb-3 md:pb-4">
                     Resumen
                   </h3>
-                  <div className="space-y-6 mb-8">
+                  <div className="space-y-4 md:space-y-6 mb-5 md:mb-8">
                     <div className="flex justify-between items-start">
                       <div>
-                        <p className="text-xs text-surface-variant uppercase tracking-widest mb-1">Cancha</p>
-                        <p className="font-[family-name:var(--font-montserrat)] text-xl font-semibold">
+                        <p className="text-[10px] md:text-xs text-surface-variant uppercase tracking-widest mb-1">Cancha</p>
+                        <p className="font-[family-name:var(--font-montserrat)] text-base md:text-xl font-semibold">
                           Cancha {cancha}
                         </p>
                       </div>
-                      <span className="material-symbols-outlined text-primary-fixed">stadium</span>
+                      <span className="material-symbols-outlined text-primary-fixed text-[20px] md:text-[24px]">stadium</span>
                     </div>
                     <div className="flex justify-between items-start">
                       <div>
-                        <p className="text-xs text-surface-variant uppercase tracking-widest mb-1">Fecha y Hora</p>
-                        <p className="font-[family-name:var(--font-montserrat)] text-xl font-semibold">
+                        <p className="text-[10px] md:text-xs text-surface-variant uppercase tracking-widest mb-1">Fecha y Hora</p>
+                        <p className="font-[family-name:var(--font-montserrat)] text-base md:text-xl font-semibold">
                           {selectedDate
                             ? `${MONTH_NAMES[parseInt(selectedDate.split("-")[1]) - 1]} ${parseInt(selectedDate.split("-")[2])}, ${String(hour).padStart(2, "0")}:00`
                             : "-- / --"}
                         </p>
                       </div>
-                      <span className="material-symbols-outlined text-primary-fixed">calendar_today</span>
+                      <span className="material-symbols-outlined text-primary-fixed text-[20px] md:text-[24px]">calendar_today</span>
                     </div>
-                    <div className="pt-6 border-t border-surface-variant/20 space-y-4">
-                      <div className="flex justify-between text-lg">
+                    <div className="pt-4 md:pt-6 border-t border-surface-variant/20 space-y-3 md:space-y-4">
+                      <div className="flex justify-between text-sm md:text-lg">
                         <span>Total Reserva</span>
                         <span className="font-bold">{formatCOP(price)}</span>
                       </div>
-                      <div className="flex justify-between text-base text-primary-fixed">
-                        <span>Anticipo Requerido ({depositPercent}%)</span>
+                      <div className="flex justify-between text-xs md:text-base text-primary-fixed">
+                        <span>Anticipo ({depositPercent}%)</span>
                         <span className="font-bold">{formatCOP(Math.round(price * depositPercent / 100))}</span>
                       </div>
                     </div>
@@ -565,7 +565,7 @@ export default function ReservarPage() {
                     type="submit"
                     form="booking-form"
                     disabled={isSubmitting || !userEmail || !profilePhone}
-                    className="w-full bg-primary-fixed text-on-primary-fixed py-4 rounded-xl font-bold text-xl flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full bg-primary-fixed text-on-primary-fixed py-3 md:py-4 rounded-xl font-bold text-base md:text-xl flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <span>
                       {isSubmitting
