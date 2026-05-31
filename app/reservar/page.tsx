@@ -572,7 +572,7 @@ export default function ReservarPage() {
                         ? "Inicia sesión"
                         : !profilePhone
                         ? "Registra tu teléfono"
-                        : "Pagar con Wompi"}
+                        : "Pagar abono"}
                     </span>
                     <span className="material-symbols-outlined">payments</span>
                   </button>
