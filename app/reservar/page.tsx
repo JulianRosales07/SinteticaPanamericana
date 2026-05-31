@@ -208,7 +208,7 @@ export default function ReservarPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface turf-accent pt-32 pb-24">
+    <div className="min-h-screen bg-surface turf-accent pt-24 md:pt-32 pb-16 md:pb-24">
       <div className="max-w-[1280px] mx-auto px-4 md:px-12">
         {created ? (
           /* ─── FALLBACK: Reserva creada pero no se pudo redirigir al pago ─── */
@@ -270,96 +270,96 @@ export default function ReservarPage() {
           /* ─── BOOKING FORM ─── */
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Left Column */}
-            <div className="lg:col-span-8 space-y-12">
+            <div className="lg:col-span-8 space-y-8 md:space-y-12">
               {/* Section Header */}
               <section>
-                <h1 className="font-[family-name:var(--font-montserrat)] text-[32px] leading-[40px] font-bold text-on-surface mb-2">
+                <h1 className="font-[family-name:var(--font-montserrat)] text-2xl md:text-[32px] md:leading-[40px] font-bold text-on-surface mb-1 md:mb-2">
                   Reserva tu Cancha
                 </h1>
-                <p className="text-secondary text-lg">Selecciona los detalles para tu próximo partido.</p>
+                <p className="text-secondary text-sm md:text-lg">Selecciona los detalles para tu próximo partido.</p>
               </section>
 
-              <form onSubmit={handleSubmit(onSubmit)} id="booking-form" className="space-y-12">
+              <form onSubmit={handleSubmit(onSubmit)} id="booking-form" className="space-y-8 md:space-y-12">
                 {/* Step 1: Field Selection */}
-                <section className="space-y-6">
+                <section className="space-y-4 md:space-y-6">
                   <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-primary">sports_soccer</span>
-                    <h2 className="font-[family-name:var(--font-montserrat)] text-xl font-semibold uppercase tracking-wider">
+                    <span className="material-symbols-outlined text-primary text-[20px] md:text-[24px]">sports_soccer</span>
+                    <h2 className="font-[family-name:var(--font-montserrat)] text-sm md:text-xl font-semibold uppercase tracking-wider">
                       1. Selecciona la Cancha
                     </h2>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-2 md:grid-cols-2 gap-3 md:gap-6">
                     {/* Cancha 1 */}
                     <div
                       onClick={() => setValue("cancha", 1)}
-                      className={`group cursor-pointer relative overflow-hidden rounded-xl border-2 transition-all hover:shadow-lg active:scale-[0.98] bg-surface-container-lowest ${
+                      className={`group cursor-pointer relative overflow-hidden rounded-lg md:rounded-xl border-2 transition-all hover:shadow-lg active:scale-[0.98] bg-surface-container-lowest ${
                         cancha === 1
                           ? "border-primary shadow-md"
                           : "border-outline-variant/30 hover:border-primary"
                       }`}
                     >
-                      <div className="aspect-video w-full overflow-hidden relative">
+                      <div className="aspect-[4/3] md:aspect-video w-full overflow-hidden relative">
                         <img
                           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                           src="https://lh3.googleusercontent.com/aida-public/AB6AXuBb0vnFdc9gOliwS4TtDZZNmox2n7-iP7Ez4vCyTuvK2EAezFQst_gpZCu--2GcwXkJJVo8nW8CO9kq7GrEo-QC51fYb4DJt9cJyjAzy_9unzMHDOalLWJ5JirrO-l-ODMqVFIuC2W4TFkXZH-6vokn13JVg0483HFdwjNp8VepwqIFE77AXXsvAhuvQ0cocAeDvJQuZJNESQSsjxxvX-zozPPz1Kv3wf2C1Pq1N-g0yL1P7592aa1tE-RdgYyT5qCnMkrQTEdiUQ4"
                           alt="Cancha 1 - Sintética profesional al atardecer"
                         />
-                        <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold text-primary shadow-sm">
+                        <div className="absolute top-2 right-2 md:top-4 md:right-4 bg-white/90 backdrop-blur-md px-2 py-0.5 md:px-3 md:py-1 rounded-full text-[10px] md:text-xs font-bold text-primary shadow-sm">
                           {formatCOP(pricingService.getPriceForHour(1, hour))} / hr
                         </div>
                       </div>
-                      <div className="p-4">
-                        <h3 className="font-[family-name:var(--font-montserrat)] text-xl font-semibold mb-1">
+                      <div className="p-2 md:p-4">
+                        <h3 className="font-[family-name:var(--font-montserrat)] text-sm md:text-xl font-semibold mb-0.5 md:mb-1">
                           Cancha 1 (Fútbol 5)
                         </h3>
-                        <div className="flex items-center gap-4 text-secondary text-xs font-semibold">
-                          <span className="flex items-center gap-1">
-                            <span className="material-symbols-outlined text-[18px]">groups</span> 10 Jugadores
+                        <div className="flex items-center gap-2 md:gap-4 text-secondary text-[10px] md:text-xs font-semibold">
+                          <span className="flex items-center gap-0.5 md:gap-1">
+                            <span className="material-symbols-outlined text-[14px] md:text-[18px]">groups</span> 10 Jug.
                           </span>
-                          <span className="flex items-center gap-1">
-                            <span className="material-symbols-outlined text-[18px]">verified</span> Grama Pro
+                          <span className="flex items-center gap-0.5 md:gap-1">
+                            <span className="material-symbols-outlined text-[14px] md:text-[18px]">verified</span> Pro
                           </span>
                         </div>
                       </div>
                       {cancha === 1 && (
-                        <div className="absolute inset-0 bg-primary/10 border-4 border-primary rounded-xl pointer-events-none" />
+                        <div className="absolute inset-0 bg-primary/10 border-3 md:border-4 border-primary rounded-lg md:rounded-xl pointer-events-none" />
                       )}
                     </div>
 
                     {/* Cancha 2 */}
                     <div
                       onClick={() => setValue("cancha", 2)}
-                      className={`group cursor-pointer relative overflow-hidden rounded-xl border-2 transition-all hover:shadow-lg active:scale-[0.98] bg-surface-container-lowest ${
+                      className={`group cursor-pointer relative overflow-hidden rounded-lg md:rounded-xl border-2 transition-all hover:shadow-lg active:scale-[0.98] bg-surface-container-lowest ${
                         cancha === 2
                           ? "border-primary shadow-md"
                           : "border-outline-variant/30 hover:border-primary"
                       }`}
                     >
-                      <div className="aspect-video w-full overflow-hidden relative">
+                      <div className="aspect-[4/3] md:aspect-video w-full overflow-hidden relative">
                         <img
                           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                           src="https://lh3.googleusercontent.com/aida-public/AB6AXuBZKrVEm1zoN1iNFWKPXf2MZz7djpYYwdVvF-5uGuKu_qpbqnkLYbg3lvU65GLtu9b3bQqHqdn8UscHSmeGz9qfB2amAVM7Rfz0kwWOW_tytpkujFc6UffBEMFvVshfHDFy4kPI_DiAY33BrQaP4Tt2N-PA0CpDxMqIEbAtQLbGgbq-8tvBcpu0I_ANFg7juROIwUUAyukXN5cLkeI4d98_9f6Deyy7pVjyKVV13cDB1k9Ln2WSusoSESDPrZGYfvotLVriy_z7Weo"
                           alt="Cancha 2 - Césped sintético premium"
                         />
-                        <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold text-primary shadow-sm">
+                        <div className="absolute top-2 right-2 md:top-4 md:right-4 bg-white/90 backdrop-blur-md px-2 py-0.5 md:px-3 md:py-1 rounded-full text-[10px] md:text-xs font-bold text-primary shadow-sm">
                           {formatCOP(pricingService.getPriceForHour(2, hour))} / hr
                         </div>
                       </div>
-                      <div className="p-4">
-                        <h3 className="font-[family-name:var(--font-montserrat)] text-xl font-semibold mb-1">
+                      <div className="p-2 md:p-4">
+                        <h3 className="font-[family-name:var(--font-montserrat)] text-sm md:text-xl font-semibold mb-0.5 md:mb-1">
                           Cancha 2 (Fútbol 5)
                         </h3>
-                        <div className="flex items-center gap-4 text-secondary text-xs font-semibold">
-                          <span className="flex items-center gap-1">
-                            <span className="material-symbols-outlined text-[18px]">groups</span> 10 Jugadores
+                        <div className="flex items-center gap-2 md:gap-4 text-secondary text-[10px] md:text-xs font-semibold">
+                          <span className="flex items-center gap-0.5 md:gap-1">
+                            <span className="material-symbols-outlined text-[14px] md:text-[18px]">groups</span> 10 Jug.
                           </span>
-                          <span className="flex items-center gap-1">
-                            <span className="material-symbols-outlined text-[18px]">verified</span> Grama Pro
+                          <span className="flex items-center gap-0.5 md:gap-1">
+                            <span className="material-symbols-outlined text-[14px] md:text-[18px]">verified</span> Pro
                           </span>
                         </div>
                       </div>
                       {cancha === 2 && (
-                        <div className="absolute inset-0 bg-primary/10 border-4 border-primary rounded-xl pointer-events-none" />
+                        <div className="absolute inset-0 bg-primary/10 border-3 md:border-4 border-primary rounded-lg md:rounded-xl pointer-events-none" />
                       )}
                     </div>
                   </div>
