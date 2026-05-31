@@ -33,6 +33,27 @@ export default function MisReservasPage() {
   const [cancelModal, setCancelModal] = useState<{ open: boolean; reservation: any | null }>({ open: false, reservation: null });
   const [cancelLoading, setCancelLoading] = useState(false);
   const [cancelResult, setCancelResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [verifyingId, setVerifyingId] = useState<string | null>(null);
+
+  async function handleVerifyPayment(reservationId: string) {
+    setVerifyingId(reservationId);
+    try {
+      const res = await fetch("/api/reservations/verify-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reservationId }),
+      });
+      const json = await res.json();
+      if (json.success || json.status === "APPROVED") {
+        reload();
+      } else {
+        alert(json.message ?? "No se pudo verificar el pago.");
+      }
+    } catch (e: any) {
+      alert("Error verificando el pago: " + (e?.message ?? ""));
+    }
+    setVerifyingId(null);
+  }
 
   async function handleCancel() {
     if (!cancelModal.reservation) return;
@@ -235,26 +256,40 @@ export default function MisReservasPage() {
                     )}
 
                     {res.status !== "cancelled" && (res.status === "pending_payment" || !res.deposit_paid) && !invoice && (
-                      <Button
-                        type="button"
-                        onClick={async () => {
-                          try {
-                            const resCheckout = await fetch(
-                              `/api/wompi/checkout-url?reservationId=${encodeURIComponent(res.id)}`,
-                              { cache: "no-store" }
-                            );
-                            const json = await resCheckout.json();
-                            if (resCheckout.ok && json.url) {
-                              window.location.href = json.url;
+                      <>
+                        <Button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              const resCheckout = await fetch(
+                                `/api/wompi/checkout-url?reservationId=${encodeURIComponent(res.id)}`,
+                                { cache: "no-store" }
+                              );
+                              const json = await resCheckout.json();
+                              if (resCheckout.ok && json.url) {
+                                window.location.href = json.url;
+                              }
+                            } catch (e) {
+                              console.error(e);
                             }
-                          } catch (e) {
-                            console.error(e);
-                          }
-                        }}
-                        className="w-full text-xs justify-center"
-                      >
-                        <FiCreditCard /> Pagar Anticipo
-                      </Button>
+                          }}
+                          className="w-full text-xs justify-center"
+                        >
+                          <FiCreditCard /> Pagar Anticipo
+                        </Button>
+                        <button
+                          type="button"
+                          onClick={() => handleVerifyPayment(res.id)}
+                          disabled={verifyingId === res.id}
+                          className="w-full text-xs font-bold text-blue-600 border border-blue-200 rounded-xl px-3 py-2 hover:bg-blue-50 transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
+                        >
+                          {verifyingId === res.id ? (
+                            <><FiLoader className="animate-spin" /> Verificando...</>
+                          ) : (
+                            <><FiCheckCircle /> Verificar Pago</>
+                          )}
+                        </button>
+                      </>
                     )}
 
                     {/* Cancel Button */}
