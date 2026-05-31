@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { FiCalendar, FiClock, FiActivity, FiArrowLeft, FiLoader, FiCheckCircle, FiFileText, FiXCircle, FiCreditCard } from "react-icons/fi";
+import { FiCalendar, FiClock, FiActivity, FiArrowLeft, FiLoader, FiCheckCircle, FiFileText, FiXCircle, FiCreditCard, FiAlertTriangle } from "react-icons/fi";
 import { Button, LinkButton } from "../../components/Button";
 import { useReservations } from "../../hooks/useReservations";
 
@@ -13,9 +14,53 @@ function formatCOP(value: number) {
   }).format(value);
 }
 
+function canCancelReservation(res: any): { allowed: boolean; reason?: string } {
+  if (!["active", "pending_payment"].includes(res.status)) {
+    return { allowed: false, reason: "Esta reserva ya no se puede cancelar." };
+  }
+  const reservationDateTime = new Date(`${res.date}T${String(res.hour).padStart(2, "0")}:00:00`);
+  const now = new Date();
+  const hoursUntil = (reservationDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+  if (hoursUntil < 24) {
+    return { allowed: false, reason: "No se puede cancelar con menos de 24h de antelación." };
+  }
+  return { allowed: true };
+}
+
 export default function MisReservasPage() {
   const router = useRouter();
-  const { reservations, loading, activeTab, setActiveTab } = useReservations();
+  const { reservations, loading, activeTab, setActiveTab, reload } = useReservations();
+  const [cancelModal, setCancelModal] = useState<{ open: boolean; reservation: any | null }>({ open: false, reservation: null });
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [cancelResult, setCancelResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  async function handleCancel() {
+    if (!cancelModal.reservation) return;
+    setCancelLoading(true);
+    setCancelResult(null);
+
+    try {
+      const res = await fetch("/api/reservations/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reservationId: cancelModal.reservation.id }),
+      });
+      const json = await res.json();
+
+      if (res.ok && json.success) {
+        const refundMsg = json.refund?.attempted
+          ? json.refund.message
+          : "Tu reserva ha sido cancelada y el horario fue liberado.";
+        setCancelResult({ success: true, message: refundMsg });
+        reload();
+      } else {
+        setCancelResult({ success: false, message: json.error ?? "Error al cancelar la reserva." });
+      }
+    } catch (e: any) {
+      setCancelResult({ success: false, message: e?.message ?? "Error de conexión." });
+    }
+    setCancelLoading(false);
+  }
 
   if (loading) {
     return (
@@ -92,6 +137,8 @@ export default function MisReservasPage() {
           <div className="grid gap-6">
             {reservations.map((res) => {
               const invoice = Array.isArray(res.invoices) ? res.invoices[0] : res.invoices;
+              const cancelCheck = canCancelReservation(res);
+
               return (
                 <div
                   key={res.id}
@@ -175,9 +222,9 @@ export default function MisReservasPage() {
                     </div>
                   </div>
 
-                  {/* Actions / Invoice link */}
+                  {/* Actions */}
                   <div className="flex flex-col gap-2 min-w-[150px] border-t md:border-t-0 border-zinc-100 pt-4 md:pt-0">
-                    {invoice ? (
+                    {invoice && (
                       <LinkButton
                         href={`/facturas/${invoice.id}`}
                         variant="secondary"
@@ -185,29 +232,44 @@ export default function MisReservasPage() {
                       >
                         <FiFileText /> Ver Factura
                       </LinkButton>
-                    ) : (
-                      res.status !== "cancelled" && (res.status === "pending_payment" || !res.deposit_paid) && (
-                        <Button
-                          type="button"
-                          onClick={async () => {
-                            try {
-                              const resCheckout = await fetch(
-                                `/api/wompi/checkout-url?reservationId=${encodeURIComponent(res.id)}`,
-                                { cache: "no-store" }
-                              );
-                              const json = await resCheckout.json();
-                              if (resCheckout.ok && json.url) {
-                                window.location.href = json.url;
-                              }
-                            } catch (e) {
-                              console.error(e);
+                    )}
+
+                    {res.status !== "cancelled" && (res.status === "pending_payment" || !res.deposit_paid) && !invoice && (
+                      <Button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            const resCheckout = await fetch(
+                              `/api/wompi/checkout-url?reservationId=${encodeURIComponent(res.id)}`,
+                              { cache: "no-store" }
+                            );
+                            const json = await resCheckout.json();
+                            if (resCheckout.ok && json.url) {
+                              window.location.href = json.url;
                             }
-                          }}
-                          className="w-full text-xs justify-center"
-                        >
-                          <FiCreditCard /> Pagar Anticipo
-                        </Button>
-                      )
+                          } catch (e) {
+                            console.error(e);
+                          }
+                        }}
+                        className="w-full text-xs justify-center"
+                      >
+                        <FiCreditCard /> Pagar Anticipo
+                      </Button>
+                    )}
+
+                    {/* Cancel Button */}
+                    {cancelCheck.allowed && (
+                      <button
+                        type="button"
+                        onClick={() => setCancelModal({ open: true, reservation: res })}
+                        className="w-full text-xs font-bold text-red-600 border border-red-200 rounded-xl px-3 py-2 hover:bg-red-50 transition-colors flex items-center justify-center gap-1"
+                      >
+                        <FiXCircle /> Cancelar Reserva
+                      </button>
+                    )}
+
+                    {!cancelCheck.allowed && res.status !== "cancelled" && (
+                      <p className="text-[10px] text-zinc-400 text-center mt-1">{cancelCheck.reason}</p>
                     )}
                   </div>
                 </div>
@@ -216,6 +278,98 @@ export default function MisReservasPage() {
           </div>
         )}
       </div>
+
+      {/* Cancel Confirmation Modal */}
+      {cancelModal.open && cancelModal.reservation && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-5">
+            {cancelResult ? (
+              <>
+                <div className={`flex items-center gap-3 ${cancelResult.success ? "text-green-700" : "text-red-700"}`}>
+                  {cancelResult.success ? (
+                    <FiCheckCircle className="text-2xl shrink-0" />
+                  ) : (
+                    <FiXCircle className="text-2xl shrink-0" />
+                  )}
+                  <h3 className="text-lg font-bold">
+                    {cancelResult.success ? "Reserva Cancelada" : "Error"}
+                  </h3>
+                </div>
+                <p className="text-sm text-zinc-600">{cancelResult.message}</p>
+                <button
+                  onClick={() => {
+                    setCancelModal({ open: false, reservation: null });
+                    setCancelResult(null);
+                  }}
+                  className="w-full bg-zinc-900 text-white font-bold py-3 rounded-xl hover:bg-zinc-800 transition-colors"
+                >
+                  Cerrar
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-3 text-amber-600">
+                  <FiAlertTriangle className="text-2xl shrink-0" />
+                  <h3 className="text-lg font-bold text-zinc-900">¿Cancelar esta reserva?</h3>
+                </div>
+
+                <div className="bg-zinc-50 rounded-xl p-4 space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-zinc-500">Cancha</span>
+                    <span className="font-bold">Cancha {cancelModal.reservation.court_id}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-zinc-500">Fecha</span>
+                    <span className="font-bold">{cancelModal.reservation.date}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-zinc-500">Hora</span>
+                    <span className="font-bold">{String(cancelModal.reservation.hour).padStart(2, "0")}:00</span>
+                  </div>
+                </div>
+
+                {cancelModal.reservation.deposit_paid && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-800">
+                    <strong>Reembolso automático:</strong> Se intentará devolver el anticipo ({formatCOP(cancelModal.reservation.deposit_cop ?? 0)}) a tu método de pago original.
+                  </div>
+                )}
+
+                <p className="text-xs text-zinc-500">
+                  Esta acción liberará el horario para que otros usuarios puedan reservarlo. No se puede deshacer.
+                </p>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setCancelModal({ open: false, reservation: null });
+                      setCancelResult(null);
+                    }}
+                    disabled={cancelLoading}
+                    className="flex-1 bg-zinc-100 text-zinc-700 font-bold py-3 rounded-xl hover:bg-zinc-200 transition-colors"
+                  >
+                    Volver
+                  </button>
+                  <button
+                    onClick={handleCancel}
+                    disabled={cancelLoading}
+                    className="flex-1 bg-red-600 text-white font-bold py-3 rounded-xl hover:bg-red-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {cancelLoading ? (
+                      <>
+                        <FiLoader className="animate-spin" /> Procesando...
+                      </>
+                    ) : (
+                      <>
+                        <FiXCircle /> Confirmar Cancelación
+                      </>
+                    )}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

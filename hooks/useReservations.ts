@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "../lib/supabase/browser";
 import { ReservationRepository } from "../lib/core/repositories/reservation.repository";
@@ -14,26 +14,30 @@ export function useReservations() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"active" | "all">("active");
 
-  useEffect(() => {
-    async function load() {
-      setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        router.push("/login?redirect=/reservas");
-        return;
-      }
-
-      try {
-        const data = await reservationRepo.getReservationsByUser(user.id);
-        setReservations(data ?? []);
-      } catch (err) {
-        console.error("Error loading reservations:", err);
-      }
-      setLoading(false);
+  const load = useCallback(async () => {
+    setLoading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      router.push("/login?redirect=/reservas");
+      return;
     }
 
-    load();
+    try {
+      const data = await reservationRepo.getReservationsByUser(user.id);
+      setReservations(data ?? []);
+    } catch (err) {
+      console.error("Error loading reservations:", err);
+    }
+    setLoading(false);
   }, [supabase, router, reservationRepo]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const reload = useCallback(() => {
+    load();
+  }, [load]);
 
   const filteredReservations = useMemo(() => {
     const nowStr = new Date().toISOString().slice(0, 10);
@@ -49,5 +53,6 @@ export function useReservations() {
     loading,
     activeTab,
     setActiveTab,
+    reload,
   };
 }

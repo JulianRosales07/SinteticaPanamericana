@@ -14,6 +14,13 @@ export function getWompiPublicKey() {
     : process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY_TEST;
 }
 
+export function getWompiPrivateKey() {
+  const env = getWompiEnv();
+  return env === "production"
+    ? process.env.WOMPI_PRIVATE_KEY_PROD
+    : process.env.WOMPI_PRIVATE_KEY_TEST;
+}
+
 export function getWompiIntegritySecret() {
   const env = getWompiEnv();
   return env === "production"
@@ -56,3 +63,52 @@ export function createIntegritySignature(params: {
   return sha256Hex(concat);
 }
 
+
+/**
+ * Void (anular) una transacción aprobada en Wompi.
+ * Solo aplica para transacciones con tarjeta.
+ * Endpoint: POST /v1/transactions/{transaction_id}/void
+ */
+export async function voidTransaction(transactionId: string): Promise<{
+  success: boolean;
+  status?: string;
+  error?: string;
+}> {
+  const privateKey = getWompiPrivateKey();
+  if (!privateKey) {
+    return { success: false, error: "Falta configurar WOMPI_PRIVATE_KEY en el servidor." };
+  }
+
+  const env = getWompiEnv();
+  const baseUrl = getWompiApiBaseUrl(env);
+  const url = `${baseUrl}/transactions/${transactionId}/void`;
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${privateKey}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      return {
+        success: true,
+        status: data?.data?.status ?? "VOIDED",
+      };
+    }
+
+    return {
+      success: false,
+      error: data?.error?.message ?? data?.message ?? `Wompi respondió con status ${response.status}`,
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      error: err?.message ?? "Error de red al contactar Wompi",
+    };
+  }
+}
