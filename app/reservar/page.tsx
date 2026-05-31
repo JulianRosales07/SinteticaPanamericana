@@ -584,21 +584,21 @@ export default function ReservarPage() {
                 </div>
 
                 {/* Info Card */}
-                <div className="glass-card rounded-2xl p-6 border border-outline-variant/20">
-                  <h4 className="font-[family-name:var(--font-montserrat)] text-xl font-semibold mb-3">
+                <div className="glass-card rounded-2xl p-4 md:p-6 border border-outline-variant/20">
+                  <h4 className="font-[family-name:var(--font-montserrat)] text-base md:text-xl font-semibold mb-2 md:mb-3">
                     Información Importante
                   </h4>
-                  <ul className="text-base space-y-3 text-secondary">
+                  <ul className="text-sm md:text-base space-y-2 md:space-y-3 text-secondary">
                     <li className="flex gap-2">
-                      <span className="material-symbols-outlined text-primary text-[20px]">info</span>
+                      <span className="material-symbols-outlined text-primary text-[18px] md:text-[20px]">info</span>
                       El saldo restante se paga en taquilla.
                     </li>
                     <li className="flex gap-2">
-                      <span className="material-symbols-outlined text-primary text-[20px]">cancel</span>
+                      <span className="material-symbols-outlined text-primary text-[18px] md:text-[20px]">cancel</span>
                       Cancelaciones con 24h de antelación.
                     </li>
                     <li className="flex gap-2">
-                      <span className="material-symbols-outlined text-primary text-[20px]">check_circle</span>
+                      <span className="material-symbols-outlined text-primary text-[18px] md:text-[20px]">check_circle</span>
                       Incluye petos e hidratación básica.
                     </li>
                   </ul>
