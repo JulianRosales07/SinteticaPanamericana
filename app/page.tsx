@@ -189,8 +189,8 @@ export default function Home() {
                 <div className="w-10 h-10 rounded-lg bg-primary-fixed/20 flex items-center justify-center mb-4">
                   <span className="material-symbols-outlined text-primary-fixed">payments</span>
                 </div>
-                <h3 className="font-bold mb-2">3. Paga y juega</h3>
-                <p className="text-sm text-white/70">Confirma con un anticipo vía Wompi y listo. El saldo se paga en taquilla.</p>
+                <h3 className="font-bold mb-2">3. Separa y paga</h3>
+                <p className="text-sm text-white/70">Reserva al instante, envía tu comprobante de abono por WhatsApp y paga el saldo en taquilla.</p>
               </div>
             </div>
           </div>

@@ -56,8 +56,8 @@ const modules = [
     color: "bg-indigo-500",
   },
   {
-    title: "Pagos",
-    desc: "Transacciones Wompi",
+    title: "Abonos",
+    desc: "Configuración de anticipos",
     href: "/admin/pagos",
     icon: "payments",
     color: "bg-rose-500",
@@ -68,6 +68,13 @@ const modules = [
     href: "/admin/cuadre",
     icon: "account_balance_wallet",
     color: "bg-teal-500",
+  },
+  {
+    title: "Reportes",
+    desc: "Ingresos diarios, semanales y mensuales",
+    href: "/admin/reportes",
+    icon: "analytics",
+    color: "bg-violet-600",
   },
 ];
 

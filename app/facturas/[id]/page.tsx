@@ -226,15 +226,8 @@ export default function InvoicePage() {
             )}
           </div>
 
-          {/* Wompi Transaction */}
-          {reservation?.wompi_transaction_id && (
-            <div className="px-4 pb-4 sm:px-6">
-              <div className="bg-surface-container-low rounded-xl p-3 border border-outline-variant/20">
-                <p className="text-[10px] uppercase font-bold text-outline tracking-wider mb-1">Transacción Wompi</p>
-                <p className="font-mono text-xs text-on-surface break-all">{reservation.wompi_transaction_id}</p>
-              </div>
-            </div>
-          )}
+
+
 
           {/* Footer */}
           <div className="px-4 py-4 sm:px-6 bg-surface-container-low border-t border-outline-variant/20 text-center">

@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "../../../../lib/supabase/server";
 import { createSupabaseAdminClient } from "../../../../lib/supabase/admin";
-import { voidTransaction } from "../../../../lib/wompi";
 
 export async function POST(request: Request) {
   const body = await request.json();
@@ -27,7 +26,7 @@ export async function POST(request: Request) {
   const admin = createSupabaseAdminClient();
   const { data: reservation, error: fetchErr } = await admin
     .from("reservations")
-    .select("id, user_id, court_id, date, hour, price_cop, status, deposit_paid, deposit_cop, wompi_transaction_id")
+    .select("id, user_id, court_id, date, hour, price_cop, status, deposit_paid, deposit_cop")
     .eq("id", reservationId)
     .maybeSingle();
 
@@ -66,31 +65,12 @@ export async function POST(request: Request) {
     );
   }
 
-  // 5) Intentar reembolso si el anticipo fue pagado
-  let refundResult: { attempted: boolean; success: boolean; error?: string } = {
-    attempted: false,
-    success: false,
-  };
-
-  if (reservation.deposit_paid && reservation.wompi_transaction_id) {
-    refundResult.attempted = true;
-    const voidRes = await voidTransaction(reservation.wompi_transaction_id);
-    refundResult.success = voidRes.success;
-    if (!voidRes.success) {
-      refundResult.error = voidRes.error;
-    }
-  }
-
-  // 6) Cancelar la reserva (incluso si el void falla, liberamos el horario)
+  // 5) Cancelar la reserva y liberar el horario
   const patch: Record<string, any> = {
     status: "cancelled",
     cancelled_at: new Date().toISOString(),
     cancelled_by: "user",
   };
-
-  if (refundResult.attempted) {
-    patch.refund_status = refundResult.success ? "refunded" : "refund_failed";
-  }
 
   const { error: updateErr } = await admin
     .from("reservations")
@@ -104,16 +84,16 @@ export async function POST(request: Request) {
     );
   }
 
+  // 6) Informar al usuario sobre el reembolso manual
+  const refundMessage = reservation.deposit_paid
+    ? "Tu reserva ha sido cancelada. Como realizaste un abono, contacta al administrador por WhatsApp para gestionar tu reembolso."
+    : "Tu reserva ha sido cancelada y el horario fue liberado.";
+
   return NextResponse.json({
     success: true,
-    refund: refundResult.attempted
-      ? {
-          attempted: true,
-          success: refundResult.success,
-          message: refundResult.success
-            ? "El anticipo será reembolsado a tu método de pago en 3-5 días hábiles."
-            : "No se pudo procesar el reembolso automáticamente. El administrador gestionará tu reembolso.",
-        }
-      : { attempted: false, message: "No había anticipo pagado." },
+    refund: {
+      attempted: false,
+      message: refundMessage,
+    },
   });
 }

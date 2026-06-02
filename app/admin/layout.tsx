@@ -17,9 +17,10 @@ const adminLinks = [
   { href: "/admin/facturas", label: "Facturas" },
   { href: "/admin/precios", label: "Precios/Canchas" },
   { href: "/admin/usuarios", label: "Usuarios" },
-  { href: "/admin/pagos", label: "Pagos" },
+  { href: "/admin/pagos", label: "Abonos" },
   { href: "/admin/productos", label: "Productos" },
   { href: "/admin/ventas", label: "Ventas" },
+  { href: "/admin/reportes", label: "Reportes" },
 ];
 
 export default function AdminLayout({ children }: PropsWithChildren) {

@@ -85,9 +85,9 @@ export default function AdminPagosPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-black tracking-tight">Pagos (Wompi)</h2>
+        <h2 className="text-2xl font-black tracking-tight">Configuración de Abonos</h2>
         <p className="mt-1 text-sm text-zinc-600">
-          Configura el porcentaje de anticipo que se cobrará al cliente al reservar.
+          Configura el porcentaje de anticipo requerido para separar las canchas.
         </p>
       </div>
 
@@ -130,10 +130,10 @@ export default function AdminPagosPage() {
         <div className="font-semibold">Notas</div>
         <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-zinc-600">
           <li>
-            El anticipo se calcula desde el precio de la reserva (pricing_rules).
+            El abono requerido se calcula automáticamente sobre el valor de la reserva según la tarifa vigente.
           </li>
           <li>
-            El pago marca la reserva como <span className="font-semibold">pagada</span>, pero la confirmación final sigue siendo manual por admin.
+            Al registrarse la reserva, el abono queda inicialmente en estado no confirmado hasta que el administrador lo valide manualmente.
           </li>
         </ul>
       </div>

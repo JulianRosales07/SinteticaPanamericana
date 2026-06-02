@@ -3,11 +3,13 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useForm } from "react-hook-form";
-import { FiCreditCard } from "react-icons/fi";
+import { FiCreditCard, FiCheckCircle, FiMessageCircle } from "react-icons/fi";
 import { z } from "zod";
 import { Button } from "../../components/Button";
 import { createSupabaseBrowserClient } from "../../lib/supabase/browser";
 import { ProfileRepository, PricingService } from "../../lib/core";
+import { ADMIN_WHATSAPP_NUMBER } from "../../lib/config";
+import { createWhatsAppUrl } from "../../lib/whatsapp";
 
 const schema = z.object({
   cancha: z.union([z.literal(1), z.literal(2)]),
@@ -122,7 +124,7 @@ export default function ReservarPage() {
       .select("hour")
       .eq("court_id", cancha)
       .eq("date", selectedDate)
-      .in("status", ["confirmed", "pending_payment"]);
+      .in("status", ["active", "confirmed", "pending_payment"]);
     setReservedSlots((data ?? []).map((r: any) => String(r.hour)));
   }, [supabase, cancha, selectedDate]);
 
@@ -165,6 +167,8 @@ export default function ReservarPage() {
       return;
     }
 
+    const calculatedDeposit = Math.round(price * depositPercent / 100);
+
     const { data, error } = await supabase
       .from("reservations")
       .insert({
@@ -174,7 +178,10 @@ export default function ReservarPage() {
         date: values.date,
         hour: values.hour,
         price_cop: price,
-        status: "pending_payment",
+        status: "active",
+        deposit_percent: depositPercent,
+        deposit_cop: calculatedDeposit,
+        deposit_paid: false,
       })
       .select()
       .single();
@@ -189,79 +196,85 @@ export default function ReservarPage() {
       return;
     }
 
-    try {
-      const res = await fetch(`/api/wompi/checkout-url?reservationId=${encodeURIComponent(data.id)}`, { cache: "no-store" });
-      const json = await res.json();
-      if (!res.ok) {
-        setFormError(json?.error ?? "No se pudo generar el enlace de pago.");
-        setCreated(data);
-        return;
-      }
-      setDepositInfo({ percent: json.depositPercent, cop: json.depositCOP });
-      window.location.href = json.url;
-    } catch (e: any) {
-      setFormError(e?.message ?? "Error generando el pago. Puedes intentar pagar desde 'Mis Reservas'.");
-      setCreated(data);
-    }
+    setDepositInfo({ percent: depositPercent, cop: calculatedDeposit });
+    setCreated(data);
   }
 
   return (
     <div className="min-h-screen bg-surface turf-accent pt-24 md:pt-32 pb-16 md:pb-24">
       <div className="max-w-[1280px] mx-auto px-4 md:px-12">
         {created ? (
-          /* ─── FALLBACK: Reserva creada pero no se pudo redirigir al pago ─── */
+          /* ─── EXITO: Reserva creada exitosamente con instrucciones de abono ─── */
           <div className="max-w-lg mx-auto">
-            <div className="glass-card rounded-2xl border border-outline-variant/30 p-8 shadow-xl">
-              <div className="flex items-center gap-3 text-xl font-black text-amber-600 mb-4">
-                <FiCreditCard className="text-2xl" /> Pago pendiente
-              </div>
-              <p className="text-sm text-on-surface-variant mb-6">
-                Tu reserva fue registrada pero necesitas completar el pago del anticipo para confirmarla.
-                Si no pagas, el horario se liberará automáticamente.
-              </p>
-              <div className="space-y-3 mb-6">
-                <div className="flex items-center justify-between py-2 border-b border-outline-variant/20">
-                  <span className="font-bold text-on-surface-variant text-sm">Cancha</span>
-                  <span className="font-black text-on-surface">Cancha {created.court_id}</span>
+            <div className="glass-card rounded-2xl border border-outline-variant/30 p-8 shadow-xl space-y-6">
+              <div className="text-center space-y-2">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 text-green-600 mb-2">
+                  <FiCheckCircle className="text-4xl" />
                 </div>
-                <div className="flex items-center justify-between py-2 border-b border-outline-variant/20">
-                  <span className="font-bold text-on-surface-variant text-sm">Fecha</span>
-                  <span className="font-black text-on-surface">{created.date}</span>
-                </div>
-                <div className="flex items-center justify-between py-2 border-b border-outline-variant/20">
-                  <span className="font-bold text-on-surface-variant text-sm">Hora</span>
-                  <span className="font-black text-on-surface">{String(created.hour).padStart(2, "0")}:00</span>
-                </div>
-                <div className="flex items-center justify-between py-3">
-                  <span className="font-bold text-on-surface-variant text-sm">Precio</span>
-                  <span className="text-xl font-black text-primary">{formatCOP(created.price_cop)}</span>
-                </div>
+                <h3 className="text-2xl font-black text-on-surface">¡Cancha Separada!</h3>
+                <p className="text-sm text-on-surface-variant">
+                  Tu reserva ha sido registrada en el sistema. Para confirmar completamente tu cupo, realiza el pago del abono.
+                </p>
               </div>
 
-              {formError && (
-                <div className="mb-4 rounded-lg border border-error/20 bg-error-container/20 p-3 text-sm text-error font-semibold">{formError}</div>
-              )}
+              <div className="space-y-3 bg-surface-container-low rounded-xl p-4 border border-outline-variant/20 text-sm">
+                <div className="flex items-center justify-between py-1.5 border-b border-outline-variant/10">
+                  <span className="text-on-surface-variant font-semibold">Cancha</span>
+                  <span className="font-bold text-on-surface">Cancha {created.court_id}</span>
+                </div>
+                <div className="flex items-center justify-between py-1.5 border-b border-outline-variant/10">
+                  <span className="text-on-surface-variant font-semibold">Fecha</span>
+                  <span className="font-bold text-on-surface">{created.date}</span>
+                </div>
+                <div className="flex items-center justify-between py-1.5 border-b border-outline-variant/10">
+                  <span className="text-on-surface-variant font-semibold">Hora</span>
+                  <span className="font-bold text-on-surface">{String(created.hour).padStart(2, "0")}:00</span>
+                </div>
+                <div className="flex items-center justify-between py-1.5 border-b border-outline-variant/10">
+                  <span className="text-on-surface-variant font-semibold">Valor Total</span>
+                  <span className="font-bold text-on-surface">{formatCOP(created.price_cop)}</span>
+                </div>
+                <div className="flex items-center justify-between py-1.5 border-b border-outline-variant/10 text-primary">
+                  <span className="font-semibold">Abono requerido ({depositPercent}%)</span>
+                  <span className="font-bold">{formatCOP(Math.round(created.price_cop * depositPercent / 100))}</span>
+                </div>
+                <div className="flex items-center justify-between py-1.5 text-error">
+                  <span className="font-semibold">Saldo restante en cancha</span>
+                  <span className="font-bold">{formatCOP(created.price_cop - Math.round(created.price_cop * depositPercent / 100))}</span>
+                </div>
+              </div>
 
-              <Button
-                type="button"
-                className="w-full bg-primary hover:bg-primary/90 text-on-primary font-bold py-3 shadow-lg"
-                onClick={async () => {
-                  setFormError(null);
-                  try {
-                    const res = await fetch(`/api/wompi/checkout-url?reservationId=${encodeURIComponent(created.id)}`, { cache: "no-store" });
-                    const json = await res.json();
-                    if (!res.ok) { setFormError(json?.error ?? "No se pudo generar el pago."); return; }
-                    setDepositInfo({ percent: json.depositPercent, cop: json.depositCOP });
-                    window.location.href = json.url;
-                  } catch (e: any) { setFormError(e?.message ?? "Error generando el pago."); }
-                }}
-              >
-                <FiCreditCard /> Pagar anticipo ahora
-              </Button>
+              <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-4 space-y-2 text-xs text-blue-900">
+                <div className="font-bold text-sm text-blue-800">💰 Medios de Pago</div>
+                <p>Realiza tu transferencia e indica tu número de reserva en el concepto:</p>
+                <ul className="list-disc pl-4 space-y-1 font-semibold">
+                  <li>Nequi: 318 602 5827</li>
+                  <li>Daviplata: 318 602 5827</li>
+                  <li>Ahorros Bancolombia: #551-000234-98</li>
+                </ul>
+              </div>
 
-              <Button type="button" onClick={() => setCreated(null)} className="w-full mt-3 bg-surface-container hover:bg-surface-container-high text-on-surface font-bold py-3">
-                Hacer otra reserva
-              </Button>
+              <div className="space-y-2">
+                <a
+                  href={createWhatsAppUrl({
+                    phone: ADMIN_WHATSAPP_NUMBER,
+                    text: `Hola, acabo de reservar la Cancha ${created.court_id} para el día ${created.date} a las ${String(created.hour).padStart(2, "0")}:00. Envío comprobante del abono de ${formatCOP(Math.round(created.price_cop * depositPercent / 100))} COP.`,
+                  }) ?? "#"}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 hover:scale-[1.01] transition-all shadow-md text-sm"
+                >
+                  <FiMessageCircle className="text-lg" /> Enviar Comprobante por WhatsApp
+                </a>
+
+                <Button
+                  type="button"
+                  onClick={() => setCreated(null)}
+                  className="w-full bg-surface-container hover:bg-surface-container-high text-on-surface font-bold py-3 text-sm"
+                >
+                  Hacer otra reserva
+                </Button>
+              </div>
             </div>
           </div>
         ) : (
@@ -572,12 +585,12 @@ export default function ReservarPage() {
                         ? "Inicia sesión"
                         : !profilePhone
                         ? "Registra tu teléfono"
-                        : "Pagar abono"}
+                        : "Reservar Cancha"}
                     </span>
-                    <span className="material-symbols-outlined">payments</span>
+                    <span className="material-symbols-outlined">calendar_month</span>
                   </button>
                   <p className="text-center text-xs text-surface-variant mt-4 opacity-70">
-                    Transacción segura garantizada por Wompi Bancolombia.
+                    Reserva inmediata. El abono se reporta manualmente por WhatsApp.
                   </p>
                 </div>
 

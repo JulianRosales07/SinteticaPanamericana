@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { FiCalendar, FiClock, FiActivity, FiArrowLeft, FiLoader, FiCheckCircle, FiFileText, FiXCircle, FiCreditCard, FiAlertTriangle } from "react-icons/fi";
+import { FiCalendar, FiClock, FiActivity, FiArrowLeft, FiLoader, FiCheckCircle, FiFileText, FiXCircle, FiCreditCard, FiAlertTriangle, FiMessageCircle } from "react-icons/fi";
 import { Button, LinkButton } from "../../components/Button";
 import { useReservations } from "../../hooks/useReservations";
+import { ADMIN_WHATSAPP_NUMBER } from "../../lib/config";
+import { createWhatsAppUrl } from "../../lib/whatsapp";
 
 function formatCOP(value: number) {
   return new Intl.NumberFormat("es-CO", {
@@ -33,27 +35,7 @@ export default function MisReservasPage() {
   const [cancelModal, setCancelModal] = useState<{ open: boolean; reservation: any | null }>({ open: false, reservation: null });
   const [cancelLoading, setCancelLoading] = useState(false);
   const [cancelResult, setCancelResult] = useState<{ success: boolean; message: string } | null>(null);
-  const [verifyingId, setVerifyingId] = useState<string | null>(null);
-
-  async function handleVerifyPayment(reservationId: string) {
-    setVerifyingId(reservationId);
-    try {
-      const res = await fetch("/api/reservations/verify-payment", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reservationId }),
-      });
-      const json = await res.json();
-      if (json.success || json.status === "APPROVED") {
-        reload();
-      } else {
-        alert(json.message ?? "No se pudo verificar el pago.");
-      }
-    } catch (e: any) {
-      alert("Error verificando el pago: " + (e?.message ?? ""));
-    }
-    setVerifyingId(null);
-  }
+  const [showPaymentInfoId, setShowPaymentInfoId] = useState<string | null>(null);
 
   async function handleCancel() {
     if (!cancelModal.reservation) return;
@@ -206,9 +188,13 @@ export default function MisReservasPage() {
                           <span className="inline-flex items-center gap-1 font-bold text-green-700 mt-1">
                             <FiCheckCircle /> Confirmada
                           </span>
-                        ) : (
+                        ) : res.deposit_paid ? (
                           <span className="inline-flex items-center gap-1 font-bold text-blue-700 mt-1">
-                            <FiCheckCircle /> Activa (Anticipo pagado)
+                            <FiCheckCircle /> Abono Confirmado
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 font-bold text-amber-700 mt-1">
+                            <FiCreditCard /> Pendiente Abono
                           </span>
                         )}
                       </div>
@@ -241,6 +227,17 @@ export default function MisReservasPage() {
                         )}
                       </div>
                     </div>
+                    {showPaymentInfoId === res.id && (
+                      <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50/50 p-4 space-y-2 text-xs text-blue-900">
+                        <div className="font-bold text-sm text-blue-800">💰 Medios de Pago</div>
+                        <p>Realiza tu transferencia a cualquiera de estas cuentas y reporta el pago por WhatsApp:</p>
+                        <ul className="list-disc pl-4 space-y-1 font-semibold">
+                          <li>Nequi: 318 602 5827</li>
+                          <li>Daviplata: 318 602 5827</li>
+                          <li>Ahorros Bancolombia: #551-000234-98</li>
+                        </ul>
+                      </div>
+                    )}
                   </div>
 
                   {/* Actions */}
@@ -255,40 +252,26 @@ export default function MisReservasPage() {
                       </LinkButton>
                     )}
 
-                    {res.status !== "cancelled" && (res.status === "pending_payment" || !res.deposit_paid) && !invoice && (
+                    {res.status !== "cancelled" && !res.deposit_paid && (
                       <>
-                        <Button
-                          type="button"
-                          onClick={async () => {
-                            try {
-                              const resCheckout = await fetch(
-                                `/api/wompi/checkout-url?reservationId=${encodeURIComponent(res.id)}`,
-                                { cache: "no-store" }
-                              );
-                              const json = await resCheckout.json();
-                              if (resCheckout.ok && json.url) {
-                                window.location.href = json.url;
-                              }
-                            } catch (e) {
-                              console.error(e);
-                            }
-                          }}
-                          className="w-full text-xs justify-center"
-                        >
-                          <FiCreditCard /> Pagar Anticipo
-                        </Button>
                         <button
                           type="button"
-                          onClick={() => handleVerifyPayment(res.id)}
-                          disabled={verifyingId === res.id}
-                          className="w-full text-xs font-bold text-blue-600 border border-blue-200 rounded-xl px-3 py-2 hover:bg-blue-50 transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
+                          onClick={() => setShowPaymentInfoId(showPaymentInfoId === res.id ? null : res.id)}
+                          className="w-full text-xs font-bold text-zinc-700 border border-zinc-200 rounded-xl px-3 py-2 hover:bg-zinc-50 transition-colors flex items-center justify-center gap-1"
                         >
-                          {verifyingId === res.id ? (
-                            <><FiLoader className="animate-spin" /> Verificando...</>
-                          ) : (
-                            <><FiCheckCircle /> Verificar Pago</>
-                          )}
+                          <FiCreditCard /> Ver datos de pago
                         </button>
+                        <a
+                          href={createWhatsAppUrl({
+                            phone: ADMIN_WHATSAPP_NUMBER,
+                            text: `Hola, adjunto comprobante de abono para mi reserva de Cancha ${res.court_id} el día ${res.date} a las ${String(res.hour).padStart(2, "0")}:00. Valor abono: ${formatCOP(res.deposit_cop ?? 0)}.`,
+                          }) ?? "#"}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="w-full text-xs font-bold text-white bg-green-600 rounded-xl px-3 py-2 hover:bg-green-700 transition-colors flex items-center justify-center gap-1.5"
+                        >
+                          <FiMessageCircle className="text-sm" /> Reportar abono
+                        </a>
                       </>
                     )}
 
@@ -365,7 +348,7 @@ export default function MisReservasPage() {
 
                 {cancelModal.reservation.deposit_paid && (
                   <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-800">
-                    <strong>Reembolso automático:</strong> Se intentará devolver el anticipo ({formatCOP(cancelModal.reservation.deposit_cop ?? 0)}) a tu método de pago original.
+                    <strong>Reembolso del abono:</strong> Como ya realizaste un abono de {formatCOP(cancelModal.reservation.deposit_cop ?? 0)}, contacta al administrador por WhatsApp para gestionar la devolución.
                   </div>
                 )}
 

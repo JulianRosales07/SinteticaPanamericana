@@ -22,6 +22,9 @@ type ReservationRow = {
   deposit_paid?: boolean | null;
   deposit_cop?: number | null;
   deposit_status?: string | null;
+  deposit_payment_method?: string | null;
+  balance_payment_method?: string | null;
+  deposit_percent?: number | null;
 };
 
 type ProfileRow = { id: string; username: string | null; phone: string | null };
@@ -87,7 +90,7 @@ export default function AdminReservasPage() {
     const query = supabase
       .from("reservations")
       .select(
-        "id, user_id, court_id, date, hour, price_cop, created_by, status, confirmed, confirmed_at, attended, attended_at, deposit_paid, deposit_cop, deposit_status",
+        "id, user_id, court_id, date, hour, price_cop, created_by, status, confirmed, confirmed_at, attended, attended_at, deposit_paid, deposit_cop, deposit_status, deposit_payment_method, balance_payment_method, deposit_percent",
       )
       .order("date", { ascending: true })
       .order("hour", { ascending: true });
@@ -452,15 +455,10 @@ function ReservationCard({
   onDeleteRequest: (id: string) => void;
 }) {
   const phone = p?.phone ?? null;
-  const customer = p?.username ?? r.created_by;
+  const isPhysical = r.created_by?.includes("(Físico)");
+  const customer = isPhysical ? r.created_by : (p?.username ?? r.created_by);
   const [expanded, setExpanded] = useState(false);
-
-  const whatsappUrl = phone
-    ? createWhatsAppUrl({
-        phone,
-        text: `Hola ${customer}. Te contactamos sobre tu reserva: Cancha ${r.court_id}, ${r.date} a las ${String(r.hour).padStart(2, "0")}:00. Valor: ${formatCOP(r.price_cop)}.`,
-      })
-    : null;
+  const [payMethod, setPayMethod] = useState<string>("nequi");
 
   const isCancelled = r.status === "cancelled";
   const isPendingPayment = r.status === "pending_payment";
@@ -469,6 +467,30 @@ function ReservationCard({
   const depositPaid = Boolean(r.deposit_paid);
   const depositValue = r.deposit_cop ?? 0;
   const pending = r.price_cop - depositValue;
+  const depPercent = r.deposit_percent ?? 30;
+
+  const abonoAmount = Math.round(r.price_cop * depPercent / 100);
+
+  const whatsappUrl = phone
+    ? createWhatsAppUrl({
+        phone,
+        text: !depositPaid
+          ? `Hola ${customer}. Te contactamos de Sintéticas Panamericana sobre tu reserva: Cancha ${r.court_id}, el día ${r.date} a las ${String(r.hour).padStart(2, "0")}:00.
+Valor Total: ${formatCOP(r.price_cop)}.
+Para confirmar tu reserva, debes realizar un abono de: ${formatCOP(abonoAmount)} (${depPercent}%).
+El saldo restante a pagar en taquilla es: ${formatCOP(r.price_cop - abonoAmount)}.
+Medios de pago:
+- Nequi: 318 602 5827
+- Daviplata: 318 602 5827
+- Ahorros Bancolombia: #551-000234-98
+Por favor envía tu comprobante por este medio.`
+          : `Hola ${customer}. Confirmamos tu reserva de la Cancha ${r.court_id} el día ${r.date} a las ${String(r.hour).padStart(2, "0")}:00.
+Valor Total: ${formatCOP(r.price_cop)}.
+Abono Recibido: ${formatCOP(r.deposit_cop ?? 0)} (${r.deposit_payment_method ?? 'Confirmado'}).
+Saldo Restante a pagar en taquilla: ${formatCOP(r.price_cop - (r.deposit_cop ?? 0))}.
+¡Te esperamos!`,
+      })
+    : null;
 
   return (
     <div className={`bg-white rounded-xl border border-outline-variant/30 shadow-sm transition-all ${isCancelled ? "opacity-60" : ""}`}>
@@ -537,6 +559,22 @@ function ReservationCard({
             {depositPaid && <span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-[9px] font-bold">Abono</span>}
           </div>
 
+          {/* Payment Method Selector (Nequi / Efectivo) */}
+          {!isCancelled && pending > 0 && (
+            <div className="flex items-center gap-2 text-xs bg-zinc-50 border border-zinc-200 rounded-xl p-2">
+              <span className="font-bold text-zinc-700">Medio de Pago:</span>
+              <select
+                value={payMethod}
+                onChange={(e) => setPayMethod(e.target.value)}
+                className="bg-white border border-outline-variant/40 rounded px-2 py-1 outline-none text-[11px] font-semibold text-zinc-800"
+              >
+                <option value="nequi">Nequi</option>
+                <option value="daviplata">Daviplata</option>
+                <option value="efectivo">Efectivo</option>
+              </select>
+            </div>
+          )}
+
           {/* Payment */}
           <div className="bg-surface-container-low rounded-lg p-2 grid grid-cols-3 gap-1 text-center">
             <div>
@@ -546,10 +584,16 @@ function ReservationCard({
             <div className="border-x border-outline-variant/20">
               <p className="text-[8px] uppercase font-bold text-green-600">Pagado</p>
               <p className="text-[11px] font-bold text-green-700">{formatCOP(depositValue)}</p>
+              {depositPaid && r.deposit_payment_method && (
+                <p className="text-[8px] text-zinc-500 font-semibold uppercase mt-0.5">({r.deposit_payment_method})</p>
+              )}
             </div>
             <div>
               <p className="text-[8px] uppercase font-bold text-red-500">Pendiente</p>
               <p className="text-[11px] font-bold text-red-600">{formatCOP(Math.max(0, pending))}</p>
+              {depositValue === r.price_cop && r.balance_payment_method && (
+                <p className="text-[8px] text-zinc-500 font-semibold uppercase mt-0.5">({r.balance_payment_method})</p>
+              )}
             </div>
           </div>
 
@@ -559,9 +603,38 @@ function ReservationCard({
               <button
                 type="button"
                 onClick={() => onUpdate(r.id, { confirmed: true, confirmed_at: new Date().toISOString() })}
-                className="flex-1 min-w-[60px] flex items-center justify-center gap-1 py-1.5 bg-primary text-white rounded-lg text-[11px] font-bold hover:brightness-110 transition-all"
+                className="flex-1 min-w-[60px] flex items-center justify-center gap-1 py-1.5 bg-zinc-800 text-white rounded-lg text-[11px] font-bold hover:bg-zinc-700 transition-all"
               >
                 Confirmar
+              </button>
+            )}
+            {!isCancelled && !depositPaid && (
+              <button
+                type="button"
+                onClick={() => onUpdate(r.id, { 
+                  deposit_paid: true, 
+                  deposit_cop: abonoAmount, 
+                  deposit_payment_method: payMethod,
+                  confirmed: true,
+                  confirmed_at: new Date().toISOString()
+                })}
+                className="flex-1 min-w-[60px] flex items-center justify-center gap-1 py-1.5 bg-primary text-white rounded-lg text-[11px] font-bold hover:brightness-110 transition-all"
+              >
+                Abono recibido
+              </button>
+            )}
+            {!isCancelled && depositPaid && pending > 0 && (
+              <button
+                type="button"
+                onClick={() => onUpdate(r.id, { 
+                  deposit_cop: r.price_cop, 
+                  balance_payment_method: payMethod,
+                  confirmed: true,
+                  confirmed_at: new Date().toISOString()
+                })}
+                className="flex-1 min-w-[60px] flex items-center justify-center gap-1 py-1.5 bg-green-600 text-white rounded-lg text-[11px] font-bold hover:bg-green-700 transition-all"
+              >
+                Completar Pago
               </button>
             )}
             {!isCancelled && isConfirmed && !isAttended && (

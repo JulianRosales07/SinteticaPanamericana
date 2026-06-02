@@ -14,8 +14,7 @@ export class InvoiceRepository {
           hour,
           price_cop,
           status,
-          confirmed,
-          wompi_transaction_id
+          confirmed
         )
       `)
       .order("created_at", { ascending: false });
@@ -37,8 +36,7 @@ export class InvoiceRepository {
           hour,
           price_cop,
           status,
-          confirmed,
-          wompi_transaction_id
+          confirmed
         )
       `)
       .eq("id", id)
