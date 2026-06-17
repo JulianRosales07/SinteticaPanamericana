@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { FiLoader, FiTrash2 } from "react-icons/fi";
 import { createSupabaseBrowserClient } from "../../../lib/supabase/browser";
 import { createWhatsAppUrl } from "../../../lib/whatsapp";
@@ -79,11 +79,13 @@ export default function AdminReservasPage() {
     d.setHours(0, 0, 0, 0);
     return d;
   });
+  // Fecha pendiente de navegación tras una renovación
+  const [pendingNavDate, setPendingNavDate] = useState<string | null>(null);
 
   const weekDays = useMemo(() => getWeekDays(anchorDate), [anchorDate]);
   const selectedDateStr = toDateStr(selectedDate);
 
-  async function load() {
+  const load = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
@@ -127,7 +129,34 @@ export default function AdminReservasPage() {
     }
 
     setIsLoading(false);
-  }
+  }, [supabase, showCancelled]);
+
+  // Cuando hay una fecha pendiente de navegación, navegar después de que los datos cargaron
+  useEffect(() => {
+    if (pendingNavDate && !isLoading) {
+      const d = new Date(pendingNavDate + "T12:00:00");
+      setAnchorDate(d);
+      setSelectedDate(d);
+      setPendingNavDate(null);
+    }
+  }, [pendingNavDate, isLoading]);
+
+  const navigateAndReload = useCallback((newDate: string) => {
+    setPendingNavDate(newDate);
+    load();
+  }, [load]);
+
+  const handleRenewedFromPage = useCallback((newDate: string, errorMsg?: string) => {
+    if (errorMsg) {
+      setError(errorMsg);
+      return;
+    }
+    if (newDate) {
+      navigateAndReload(newDate);
+    } else {
+      load();
+    }
+  }, [navigateAndReload, load]);
 
   useEffect(() => {
     load();
@@ -340,6 +369,7 @@ export default function AdminReservasPage() {
             profiles={profiles}
             onUpdate={updateReservation}
             onDeleteRequest={setReservationToDelete}
+            onRenewed={handleRenewedFromPage}
           />
           <CourtColumn
             courtId={2}
@@ -347,6 +377,7 @@ export default function AdminReservasPage() {
             profiles={profiles}
             onUpdate={updateReservation}
             onDeleteRequest={setReservationToDelete}
+            onRenewed={handleRenewedFromPage}
           />
         </div>
       )}
@@ -400,12 +431,14 @@ function CourtColumn({
   profiles,
   onUpdate,
   onDeleteRequest,
+  onRenewed,
 }: {
   courtId: number;
   rows: ReservationRow[];
   profiles: Record<string, ProfileRow>;
   onUpdate: (id: string, patch: Partial<ReservationRow>) => void;
   onDeleteRequest: (id: string) => void;
+  onRenewed?: (newDate: string, error?: string) => void;
 }) {
   const accentColor = courtId === 1 ? "border-primary" : "border-tertiary";
   const iconColor = courtId === 1 ? "text-primary" : "text-tertiary";
@@ -434,6 +467,7 @@ function CourtColumn({
             profile={profiles[r.user_id] ?? null}
             onUpdate={onUpdate}
             onDeleteRequest={onDeleteRequest}
+            onRenewed={onRenewed}
           />
         ))
       )}
@@ -448,17 +482,47 @@ function ReservationCard({
   profile: p,
   onUpdate,
   onDeleteRequest,
+  onRenewed,
 }: {
   row: ReservationRow;
   profile: ProfileRow | null;
   onUpdate: (id: string, patch: Partial<ReservationRow>) => void;
   onDeleteRequest: (id: string) => void;
+  onRenewed?: (newDate: string, error?: string) => void;
 }) {
   const phone = p?.phone ?? null;
   const isPhysical = r.created_by?.includes("(Físico)");
   const customer = isPhysical ? r.created_by : (p?.username ?? r.created_by);
   const [expanded, setExpanded] = useState(false);
   const [payMethod, setPayMethod] = useState<string>("nequi");
+  const [isRenewing, setIsRenewing] = useState(false);
+  const [renewError, setRenewError] = useState<string | null>(null);
+  const [renewSuccess, setRenewSuccess] = useState<string | null>(null);
+
+  async function handleRenew() {
+    setIsRenewing(true);
+    setRenewError(null);
+    setRenewSuccess(null);
+    try {
+      const res = await fetch("/api/reservations/renew", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reservationId: r.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setRenewError(data.error ?? "Error al renovar");
+        onRenewed?.("", data.error ?? "Error al renovar");
+      } else {
+        setRenewSuccess(data.message ?? "Reserva renovada");
+        onRenewed?.(data.reservation?.date ?? "", undefined);
+      }
+    } catch {
+      setRenewError("Error de conexión");
+    } finally {
+      setIsRenewing(false);
+    }
+  }
 
   const isCancelled = r.status === "cancelled";
   const isPendingPayment = r.status === "pending_payment";
@@ -669,6 +733,31 @@ Saldo Restante a pagar en taquilla: ${formatCOP(r.price_cop - (r.deposit_cop ?? 
               </button>
             )}
           </div>
+
+          {/* Renovar semana siguiente */}
+          {!isCancelled && (
+            <div className="space-y-1">
+              <button
+                type="button"
+                disabled={isRenewing}
+                onClick={handleRenew}
+                className="w-full flex items-center justify-center gap-1.5 py-1.5 border border-blue-400 text-blue-600 rounded-lg text-[11px] font-bold hover:bg-blue-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {isRenewing ? (
+                  <FiLoader className="animate-spin text-xs" />
+                ) : (
+                  <span className="material-symbols-outlined text-[14px]">event_repeat</span>
+                )}
+                {isRenewing ? "Renovando..." : "Renovar semana siguiente"}
+              </button>
+              {renewSuccess && (
+                <p className="text-[10px] text-green-600 font-semibold text-center">{renewSuccess}</p>
+              )}
+              {renewError && (
+                <p className="text-[10px] text-red-500 font-semibold text-center">{renewError}</p>
+              )}
+            </div>
+          )}
 
           <button
             type="button"

@@ -23,18 +23,28 @@ export default function AdminPagosPage() {
     setError(null);
     setOk(null);
 
+    console.log("Cargando payment_settings...");
+
     const { data, error } = await supabase
       .from("payment_settings")
       .select("id, deposit_percent")
       .eq("id", 1)
       .maybeSingle();
 
-    if (error) setError(error.message);
+    console.log("Resultado de carga:", { data, error });
+
+    if (error) {
+      console.error("Error al cargar:", error);
+      setError(`Error al cargar: ${error.message}`);
+    }
+    
     if (data) {
       setRow(data as PaymentSettingsRow);
       setDeposit(String((data as PaymentSettingsRow).deposit_percent));
+      console.log("Datos cargados:", data);
     } else {
       setRow(null);
+      console.log("No se encontró registro, se creará uno nuevo al guardar");
     }
     setIsLoading(false);
   }
@@ -53,6 +63,8 @@ export default function AdminPagosPage() {
       return;
     }
 
+    console.log("Intentando guardar:", { row, deposit_percent: n });
+
     const { data, error } = row
       ? await supabase
           .from("payment_settings")
@@ -66,12 +78,22 @@ export default function AdminPagosPage() {
           .select("id, deposit_percent")
           .single();
 
+    console.log("Resultado de guardar:", { data, error });
+
     if (error) {
-      setError(error.message);
+      console.error("Error al guardar:", error);
+      setError(`Error: ${error.message} (código: ${error.code})`);
       return;
     }
-    setRow(data as PaymentSettingsRow);
-    setOk("Guardado.");
+    
+    if (data) {
+      setRow(data as PaymentSettingsRow);
+      setDeposit(String(data.deposit_percent));
+      setOk("Guardado correctamente.");
+      console.log("Guardado exitoso:", data);
+    } else {
+      setError("No se recibió confirmación de la actualización.");
+    }
   }
 
   if (isLoading) {

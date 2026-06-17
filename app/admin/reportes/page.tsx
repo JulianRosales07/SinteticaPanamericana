@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { FiLoader, FiCalendar, FiDollarSign, FiShoppingBag, FiLayers, FiRefreshCw, FiTrendingUp } from "react-icons/fi";
+import { FiLoader, FiCalendar, FiDollarSign, FiShoppingBag, FiLayers, FiRefreshCw, FiTrendingUp, FiDownload } from "react-icons/fi";
 import { createSupabaseBrowserClient } from "../../../lib/supabase/browser";
-import { Button } from "../../../components/Button";
+import * as XLSX from "xlsx";
 
 function formatCOP(value: number) {
   return new Intl.NumberFormat("es-CO", {
@@ -71,6 +71,11 @@ export default function AdminReportesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Historial de reportes descargados
+  const [history, setHistory] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [historyFilter, setHistoryFilter] = useState<"all" | "Diario" | "Semanal" | "Mensual">("all");
+
   // Cargar datos
   async function loadData() {
     setLoading(true);
@@ -86,12 +91,24 @@ export default function AdminReportesPage() {
       if (resErr) throw resErr;
 
       // 2) Cargar ventas en el rango
-      const startISO = `${startDate}T00:00:00`;
-      const endISO = `${endDate}T23:59:59`;
+      const startISO = `${startDate}T00:00:00-05:00`;
+      const endISO = `${endDate}T23:59:59.999-05:00`;
 
       const { data: salesData, error: salesErr } = await supabase
         .from("sales")
-        .select("id, sold_at, total_cop")
+        .select(`
+          id,
+          sold_at,
+          total_cop,
+          payment_method,
+          sale_items (
+            qty,
+            unit_price_cop,
+            products (
+              name
+            )
+          )
+        `)
         .gte("sold_at", startISO)
         .lte("sold_at", endISO);
 
@@ -145,15 +162,39 @@ export default function AdminReportesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startDate, endDate]);
 
+  // Cargar historial de reportes
+  async function loadHistory() {
+    setHistoryLoading(true);
+    const { data } = await supabase
+      .from("report_downloads")
+      .select("*")
+      .order("downloaded_at", { ascending: false })
+      .limit(100);
+    setHistory(data ?? []);
+    setHistoryLoading(false);
+  }
+
+  useEffect(() => {
+    loadHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Cálculos financieros
   const financials = useMemo(() => {
     let totalReservas = 0;
     let totalBar = sales.reduce((acc, s) => acc + (s.total_cop ?? 0), 0);
 
+    // Métodos de pago para reservas
     let nequi = 0;
     let daviplata = 0;
     let efectivo = 0;
     let otros = 0;
+
+    // Métodos de pago para bar/snack
+    let barNequi = 0;
+    let barDaviplata = 0;
+    let barEfectivo = 0;
+    let barOtros = 0;
 
     for (const r of reservations) {
       if (r.deposit_paid) {
@@ -193,6 +234,16 @@ export default function AdminReportesPage() {
       }
     }
 
+    // Calcular métodos de pago del bar
+    for (const s of sales) {
+      const method = (s.payment_method ?? "efectivo").toLowerCase();
+      const amount = s.total_cop ?? 0;
+      if (method === "nequi") barNequi += amount;
+      else if (method === "daviplata") barDaviplata += amount;
+      else if (method === "efectivo") barEfectivo += amount;
+      else barOtros += amount;
+    }
+
     return {
       totalReservas,
       totalBar,
@@ -201,8 +252,112 @@ export default function AdminReportesPage() {
       daviplata,
       efectivo,
       otros,
+      barNequi,
+      barDaviplata,
+      barEfectivo,
+      barOtros,
     };
   }, [reservations, sales]);
+
+  // ─── Exportar a Excel ────────────────────────────────────────────────────────
+  async function exportToExcel() {
+    const wb = XLSX.utils.book_new();
+
+    const periodoLabel =
+      filterType === "today" ? "Diario" :
+      filterType === "week"  ? "Semanal" :
+      filterType === "month" ? "Mensual" : "Personalizado";
+    const periodoStr = startDate === endDate ? startDate : `${startDate} al ${endDate}`;
+
+    // Hoja 1: Resumen
+    const resumenData = [
+      ["REPORTE DE INGRESOS – SINTÉTICAS PANAMERICANA"],
+      [`Período: ${periodoLabel} (${periodoStr})`],
+      [],
+      ["CONCEPTO", "VALOR (COP)"],
+      ["Ingresos por Canchas", financials.totalReservas],
+      ["Ingresos Bar/Snack", financials.totalBar],
+      ["TOTAL GENERAL", financials.totalCombined],
+      [],
+      ["MÉTODOS DE PAGO (CANCHAS)", ""],
+      ["Nequi", financials.nequi],
+      ["Daviplata", financials.daviplata],
+      ["Efectivo", financials.efectivo],
+      ["Otros / Sin definir", financials.otros],
+    ];
+    const wsResumen = XLSX.utils.aoa_to_sheet(resumenData);
+    wsResumen["!cols"] = [{ wch: 35 }, { wch: 20 }];
+    XLSX.utils.book_append_sheet(wb, wsResumen, "Resumen");
+
+    // Hoja 2: Detalle Canchas
+    const canchasHeaders = ["Cliente", "Cancha", "Fecha", "Hora", "Precio Total", "Abono", "Método Abono", "Saldo", "Método Saldo", "Estado"];
+    const canchasRows = reservations.map((r) => {
+      const isPhysical = r.created_by?.includes("(Físico)");
+      const clientName = isPhysical ? r.created_by : (profiles[r.user_id] ?? r.created_by);
+      const depPct = r.deposit_percent ?? 30;
+      const abono = r.deposit_paid ? Math.round(r.price_cop * depPct / 100) : 0;
+      const saldo = r.deposit_cop === r.price_cop ? r.price_cop - abono : 0;
+      return [
+        clientName,
+        `Cancha ${r.court_id}`,
+        r.date,
+        `${String(r.hour).padStart(2, "0")}:00`,
+        r.price_cop,
+        abono,
+        r.deposit_paid ? (r.deposit_payment_method ?? "nequi").toUpperCase() : "No pagado",
+        saldo,
+        saldo > 0 ? (r.balance_payment_method ?? "nequi").toUpperCase() : "Pendiente",
+        r.status === "active" ? "Activa" : r.status === "pending_payment" ? "Pago pendiente" : r.status,
+      ];
+    });
+    const wsCanchas = XLSX.utils.aoa_to_sheet([canchasHeaders, ...canchasRows]);
+    wsCanchas["!cols"] = [
+      { wch: 25 }, { wch: 10 }, { wch: 12 }, { wch: 8 },
+      { wch: 15 }, { wch: 12 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 18 },
+    ];
+    XLSX.utils.book_append_sheet(wb, wsCanchas, "Canchas");
+
+    // Hoja 3: Detalle Bar/Snack
+    const barHeaders = ["ID Venta", "Fecha y Hora", "Productos", "Total (COP)"];
+    const barRows = sales.map((s) => {
+      const productsStr = s.sale_items && s.sale_items.length > 0
+        ? s.sale_items.map((item: any) => `${item.products?.name || "Producto"} (x${item.qty})`).join(", ")
+        : "Sin productos";
+      return [
+        s.id.slice(0, 8).toUpperCase(),
+        new Date(s.sold_at).toLocaleString("es-CO"),
+        productsStr,
+        s.total_cop,
+      ];
+    });
+    const wsBar = XLSX.utils.aoa_to_sheet([barHeaders, ...barRows, [], ["", "", "TOTAL BAR", financials.totalBar]]);
+    wsBar["!cols"] = [{ wch: 15 }, { wch: 22 }, { wch: 35 }, { wch: 15 }];
+    XLSX.utils.book_append_sheet(wb, wsBar, "Bar-Snack");
+
+    // ── Guardar registro en la DB ──────────────────────────────────────────────
+    try {
+      const { data: authData } = await supabase.auth.getUser();
+      const user = authData?.user;
+      await supabase.from("report_downloads").insert({
+        downloaded_by: user?.id ?? null,
+        downloaded_by_email: user?.email ?? null,
+        period_type: periodoLabel,
+        date_from: startDate,
+        date_to: endDate,
+        total_canchas: financials.totalReservas,
+        total_bar: financials.totalBar,
+        total_combined: financials.totalCombined,
+        reservations_count: reservations.length,
+        sales_count: sales.length,
+      });
+    } catch (err) {
+      // No bloquear la descarga si falla el registro
+      console.error("Error guardando registro de descarga:", err);
+    }
+
+    const fileName = `Reporte_${periodoLabel}_${startDate.replaceAll("-", "")}_Sinteticas.xlsx`;
+    XLSX.writeFile(wb, fileName);
+  }
 
   return (
     <div className="space-y-6">
@@ -214,12 +369,21 @@ export default function AdminReportesPage() {
             Analiza los ingresos consolidados por canchas, bar y métodos de pago.
           </p>
         </div>
-        <button
-          onClick={loadData}
-          className="self-start flex items-center gap-1.5 px-4 py-2.5 bg-white border border-outline-variant/30 rounded-xl text-xs font-bold hover:bg-surface-container transition-colors"
-        >
-          <FiRefreshCw className="text-sm" /> Recargar
-        </button>
+        <div className="flex items-center gap-2 self-start">
+          <button
+            onClick={loadData}
+            className="flex items-center gap-1.5 px-4 py-2.5 bg-white border border-outline-variant/30 rounded-xl text-xs font-bold hover:bg-surface-container transition-colors"
+          >
+            <FiRefreshCw className="text-sm" /> Recargar
+          </button>
+          <button
+            onClick={() => exportToExcel()}
+            disabled={loading || (reservations.length === 0 && sales.length === 0)}
+            className="flex items-center gap-1.5 px-4 py-2.5 bg-green-600 text-white rounded-xl text-xs font-bold hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+          >
+            <FiDownload className="text-sm" /> Descargar Excel
+          </button>
+        </div>
       </div>
 
       {/* Date Filters Row */}
@@ -325,7 +489,7 @@ export default function AdminReportesPage() {
           </div>
 
           {/* Payment Methods Breakdowns */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             {/* Metodos de pago en reservas */}
             <div className="lg:col-span-1 bg-white rounded-2xl border border-outline-variant/30 p-5 shadow-sm space-y-4">
               <h3 className="font-extrabold text-sm text-on-surface uppercase tracking-wider border-b pb-2 flex items-center gap-1.5">
@@ -347,6 +511,31 @@ export default function AdminReportesPage() {
                 <div className="flex justify-between items-center text-sm">
                   <span className="font-bold text-zinc-600">Otros / Sin definir</span>
                   <span className="font-black text-on-surface">{formatCOP(financials.otros)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Metodos de pago en bar/snack */}
+            <div className="lg:col-span-1 bg-white rounded-2xl border border-outline-variant/30 p-5 shadow-sm space-y-4">
+              <h3 className="font-extrabold text-sm text-on-surface uppercase tracking-wider border-b pb-2 flex items-center gap-1.5">
+                <FiShoppingBag className="text-amber-600 text-base" /> Métodos de Pago (Bar/Snack)
+              </h3>
+              <div className="space-y-3 pt-1">
+                <div className="flex justify-between items-center text-sm border-b pb-2 border-dashed">
+                  <span className="font-bold text-zinc-600">Nequi</span>
+                  <span className="font-black text-on-surface">{formatCOP(financials.barNequi)}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm border-b pb-2 border-dashed">
+                  <span className="font-bold text-zinc-600">Daviplata</span>
+                  <span className="font-black text-on-surface">{formatCOP(financials.barDaviplata)}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm border-b pb-2 border-dashed">
+                  <span className="font-bold text-zinc-600">Efectivo</span>
+                  <span className="font-black text-on-surface">{formatCOP(financials.barEfectivo)}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="font-bold text-zinc-600">Otros / Sin definir</span>
+                  <span className="font-black text-on-surface">{formatCOP(financials.barOtros)}</span>
                 </div>
               </div>
             </div>
@@ -425,20 +614,137 @@ export default function AdminReportesPage() {
               <p className="text-xs text-zinc-500 text-center py-6">No hay ventas registradas en el bar en este período.</p>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[300px] overflow-y-auto hide-scrollbar">
-                {sales.map((s) => (
-                  <div key={s.id} className="border border-zinc-100 rounded-xl p-3 bg-zinc-50/50 flex justify-between items-center text-xs">
-                    <div>
-                      <p className="font-bold text-zinc-800">Factura POS #{s.id.slice(0, 6).toUpperCase()}</p>
-                      <p className="text-zinc-500">{new Date(s.sold_at).toLocaleString("es-CO")}</p>
+                {sales.map((s) => {
+                  const productsList = s.sale_items && s.sale_items.length > 0
+                    ? s.sale_items.map((item: any) => `${item.products?.name || "Producto"} (x${item.qty})`).join(", ")
+                    : "Sin productos";
+                  return (
+                    <div key={s.id} className="border border-zinc-100 rounded-xl p-3 bg-zinc-50/50 flex justify-between items-center text-xs">
+                      <div className="flex-1 min-w-0 pr-2">
+                        <p className="font-bold text-zinc-800">Factura POS #{s.id.slice(0, 6).toUpperCase()}</p>
+                        <p className="text-[11px] text-zinc-600 mt-1 truncate" title={productsList}>
+                          {productsList}
+                        </p>
+                        <p className="text-[10px] text-zinc-400 mt-1">{new Date(s.sold_at).toLocaleString("es-CO")}</p>
+                      </div>
+                      <span className="font-black text-sm text-zinc-900 shrink-0">{formatCOP(s.total_cop)}</span>
                     </div>
-                    <span className="font-black text-sm text-zinc-900">{formatCOP(s.total_cop)}</span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
         </>
       )}
+
+      {/* ── Historial de Reportes Descargados ─────────────────────────────────── */}
+      <div className="bg-white rounded-2xl border border-outline-variant/30 shadow-sm overflow-hidden">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-5 py-4 border-b border-outline-variant/20">
+          <div className="flex items-center gap-2">
+            <FiDownload className="text-primary text-base" />
+            <h3 className="font-extrabold text-sm text-on-surface uppercase tracking-wider">
+              Historial de Reportes Descargados
+            </h3>
+            {!historyLoading && (
+              <span className="bg-surface-container-high text-on-surface-variant text-[10px] font-bold px-2 py-0.5 rounded-full">
+                {history.length}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {/* Filtro por tipo */}
+            <div className="flex gap-1">
+              {(["all", "Diario", "Semanal", "Mensual"] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setHistoryFilter(f)}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                    historyFilter === f
+                      ? "bg-primary text-white"
+                      : "bg-surface-container text-on-surface-variant hover:bg-surface-container-high"
+                  }`}
+                >
+                  {f === "all" ? "Todos" : f}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={loadHistory}
+              className="p-1.5 rounded-lg hover:bg-surface-container transition-colors"
+              title="Recargar historial"
+            >
+              <FiRefreshCw className={`text-sm text-outline ${historyLoading ? "animate-spin" : ""}`} />
+            </button>
+          </div>
+        </div>
+
+        {/* Tabla */}
+        {historyLoading ? (
+          <div className="flex items-center justify-center py-10">
+            <FiLoader className="animate-spin text-2xl text-primary" />
+          </div>
+        ) : history.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <FiDownload className="text-4xl text-outline-variant/40 mb-2" />
+            <p className="text-sm font-semibold text-on-surface-variant">No hay reportes descargados aún</p>
+            <p className="text-xs text-outline mt-1">Los reportes aparecerán aquí cuando se descarguen</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 uppercase tracking-wider font-semibold">
+                  <th className="py-3 px-4">Fecha Descarga</th>
+                  <th className="py-3 px-4">Tipo</th>
+                  <th className="py-3 px-4">Período</th>
+                  <th className="py-3 px-4">Canchas</th>
+                  <th className="py-3 px-4">Bar</th>
+                  <th className="py-3 px-4">Total</th>
+                  <th className="py-3 px-4">Reservas</th>
+                  <th className="py-3 px-4">Ventas</th>
+                  <th className="py-3 px-4">Descargado por</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-100">
+                {history
+                  .filter((h) => historyFilter === "all" || h.period_type === historyFilter)
+                  .map((h) => (
+                    <tr key={h.id} className="hover:bg-zinc-50/60 transition-colors">
+                      <td className="py-2.5 px-4 text-zinc-500 whitespace-nowrap">
+                        {new Date(h.downloaded_at).toLocaleString("es-CO", {
+                          day: "2-digit", month: "2-digit", year: "numeric",
+                          hour: "2-digit", minute: "2-digit",
+                        })}
+                      </td>
+                      <td className="py-2.5 px-4">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          h.period_type === "Diario"    ? "bg-blue-100 text-blue-700" :
+                          h.period_type === "Semanal"   ? "bg-violet-100 text-violet-700" :
+                          h.period_type === "Mensual"   ? "bg-emerald-100 text-emerald-700" :
+                          "bg-amber-100 text-amber-700"
+                        }`}>
+                          {h.period_type}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-4 text-zinc-600 whitespace-nowrap font-semibold">
+                        {h.date_from === h.date_to ? h.date_from : `${h.date_from} → ${h.date_to}`}
+                      </td>
+                      <td className="py-2.5 px-4 font-bold text-emerald-700">{formatCOP(h.total_canchas)}</td>
+                      <td className="py-2.5 px-4 font-bold text-amber-700">{formatCOP(h.total_bar)}</td>
+                      <td className="py-2.5 px-4 font-black text-violet-700">{formatCOP(h.total_combined)}</td>
+                      <td className="py-2.5 px-4 text-zinc-500 text-center">{h.reservations_count}</td>
+                      <td className="py-2.5 px-4 text-zinc-500 text-center">{h.sales_count}</td>
+                      <td className="py-2.5 px-4 text-zinc-500 truncate max-w-[160px]">
+                        {h.downloaded_by_email ?? "—"}
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

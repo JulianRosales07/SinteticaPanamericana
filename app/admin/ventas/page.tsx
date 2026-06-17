@@ -180,7 +180,7 @@ export default function AdminVentasPOSPage() {
       qty: item.quantity,
     }));
 
-    const { data, error } = await supabase.rpc("create_sale", { items });
+    const { data, error } = await supabase.rpc("create_sale", { items, p_payment_method: payMethod });
     setIsSaving(false);
 
     if (error) {
