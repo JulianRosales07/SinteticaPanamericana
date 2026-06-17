@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { createSupabaseBrowserClient } from "../../lib/supabase/browser";
 
 function formatCOP(value: number) {
@@ -93,45 +93,70 @@ export default function AdminHomePage() {
     ventasHoy: 0,
     ingresoHoy: 0,
   });
+  const [lowStockAlerts, setLowStockAlerts] = useState<{ id: number; name: string; stock_qty: number }[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function loadStats() {
-      const today = new Date().toISOString().split("T")[0];
+  const loadStats = useCallback(async () => {
+    const today = new Date().toISOString().split("T")[0];
 
-      const [resHoy, resActivas, ventasHoy] = await Promise.all([
-        supabase
-          .from("reservations")
-          .select("id", { count: "exact", head: true })
-          .eq("date", today)
-          .eq("status", "active"),
-        supabase
-          .from("reservations")
-          .select("id", { count: "exact", head: true })
-          .eq("status", "active"),
-        supabase
-          .from("sales")
-          .select("total_cop")
-          .gte("sold_at", `${today}T00:00:00`)
-          .lte("sold_at", `${today}T23:59:59`),
-      ]);
+    const [resHoy, resActivas, ventasHoy, lowStockData] = await Promise.all([
+      supabase
+        .from("reservations")
+        .select("id", { count: "exact", head: true })
+        .eq("date", today)
+        .eq("status", "active"),
+      supabase
+        .from("reservations")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "active"),
+      supabase
+        .from("sales")
+        .select("total_cop")
+        .gte("sold_at", `${today}T00:00:00`)
+        .lte("sold_at", `${today}T23:59:59`),
+      supabase
+        .from("products")
+        .select("id, name, stock_qty")
+        .eq("active", true)
+        .lte("stock_qty", 5)
+        .order("stock_qty", { ascending: true }),
+    ]);
 
-      const ventasTotales = (ventasHoy.data ?? []).reduce(
-        (acc: number, s: { total_cop: number }) => acc + s.total_cop,
-        0
-      );
+    const ventasTotales = (ventasHoy.data ?? []).reduce(
+      (acc: number, s: { total_cop: number }) => acc + s.total_cop,
+      0
+    );
 
-      setStats({
-        reservasHoy: resHoy.count ?? 0,
-        reservasActivas: resActivas.count ?? 0,
-        ventasHoy: (ventasHoy.data ?? []).length,
-        ingresoHoy: ventasTotales,
-      });
-      setLoading(false);
-    }
-
-    loadStats();
+    setStats({
+      reservasHoy: resHoy.count ?? 0,
+      reservasActivas: resActivas.count ?? 0,
+      ventasHoy: (ventasHoy.data ?? []).length,
+      ingresoHoy: ventasTotales,
+    });
+    setLowStockAlerts((lowStockData.data ?? []) as any[]);
+    setLoading(false);
   }, [supabase]);
+
+  useEffect(() => {
+    loadStats();
+
+    const channel = supabase
+      .channel("realtime-dashboard-updates")
+      .on("postgres_changes", { event: "*", schema: "public", table: "reservations" }, () => {
+        loadStats();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "sales" }, () => {
+        loadStats();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "products" }, () => {
+        loadStats();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, loadStats]);
 
   return (
     <div className="space-y-6">
@@ -144,6 +169,31 @@ export default function AdminHomePage() {
           Resumen del día y accesos rápidos.
         </p>
       </div>
+
+      {/* Alertas de Inventario Bajo */}
+      {!loading && lowStockAlerts.length > 0 && (
+        <div className="bg-red-50/50 border border-red-200 rounded-2xl p-4 shadow-sm flex flex-col gap-3">
+          <div className="flex items-center gap-2 text-red-800">
+            <span className="material-symbols-outlined text-lg">warning</span>
+            <h3 className="text-xs font-bold uppercase tracking-wider">Alertas de Inventario Bajo</h3>
+            <span className="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0">
+              {lowStockAlerts.length}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+            {lowStockAlerts.map((p) => (
+              <div key={p.id} className="flex justify-between items-center bg-white px-3 py-2 rounded-xl border border-red-100 text-xs">
+                <span className="font-semibold text-zinc-700 truncate mr-2" title={p.name}>
+                  {p.name}
+                </span>
+                <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${p.stock_qty === 0 ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-800"}`}>
+                  {p.stock_qty} {p.stock_qty === 1 ? "ud" : "uds"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">

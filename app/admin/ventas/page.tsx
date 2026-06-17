@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from "../../../lib/supabase/browser";
 import { PricingService } from "../../../lib/core";
 
@@ -26,6 +27,15 @@ function formatCOP(value: number) {
 }
 
 export default function AdminVentasPOSPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-[40vh] items-center justify-center"><span className="material-symbols-outlined text-3xl text-primary animate-spin">progress_activity</span></div>}>
+      <AdminVentasPOSPageInner />
+    </Suspense>
+  );
+}
+
+function AdminVentasPOSPageInner() {
+  const searchParams = useSearchParams();
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const [products, setProducts] = useState<ProductRow[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -97,6 +107,30 @@ export default function AdminVentasPOSPage() {
   useEffect(() => {
     fetchReservedSlots();
   }, [fetchReservedSlots]);
+
+  // Pre-fill from searchParams (coming from 2D Grid Scheduler)
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    const canchaParam = searchParams.get("cancha");
+    const dateParam = searchParams.get("date");
+    const hourParam = searchParams.get("hour");
+
+    if (tabParam === "cancha") {
+      setPosTab("cancha");
+    }
+    if (canchaParam === "1" || canchaParam === "2") {
+      setCourt(Number(canchaParam) as 1 | 2);
+    }
+    if (dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
+      setResDate(dateParam);
+    }
+    if (hourParam) {
+      const h = Number(hourParam);
+      if (h >= 6 && h <= 23) {
+        setResHour(h);
+      }
+    }
+  }, [searchParams]);
 
   // Calcular precio automáticamente al seleccionar cancha y hora
   useEffect(() => {

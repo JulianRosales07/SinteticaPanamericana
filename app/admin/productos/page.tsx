@@ -337,8 +337,14 @@ export default function AdminProductosPage() {
                         const v = Number(e.target.value);
                         if (!Number.isNaN(v) && v !== r.stock_qty) updateProduct(r.id, { stock_qty: v });
                       }}
-                      className="w-full rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm outline-none"
+                      className={`w-full rounded-2xl border px-4 py-2 text-sm outline-none ${r.stock_qty <= 5 ? "border-amber-300 bg-amber-50/50" : "border-zinc-200 bg-white"}`}
                     />
+                    {r.stock_qty <= 5 && (
+                      <div className={`mt-1 flex items-center gap-1 text-[11px] font-bold ${r.stock_qty === 0 ? "text-red-600" : "text-amber-600"}`}>
+                        <FiAlertTriangle className="text-xs" />
+                        {r.stock_qty === 0 ? "Sin stock" : `⚠ Bajo stock (${r.stock_qty})`}
+                      </div>
+                    )}
                   </div>
                   <div className="col-span-2">
                     <input
@@ -413,8 +419,14 @@ export default function AdminProductosPage() {
                           const v = Number(e.target.value);
                           if (!Number.isNaN(v) && v !== r.stock_qty) updateProduct(r.id, { stock_qty: v });
                         }}
-                        className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none mt-1"
+                        className={`w-full rounded-xl border px-3 py-2 text-sm outline-none mt-1 ${r.stock_qty <= 5 ? "border-amber-300 bg-amber-50/50" : "border-zinc-200 bg-white"}`}
                       />
+                      {r.stock_qty <= 5 && (
+                        <div className={`mt-1 flex items-center gap-1 text-[10px] font-bold ${r.stock_qty === 0 ? "text-red-600" : "text-amber-600"}`}>
+                          <FiAlertTriangle className="text-[10px]" />
+                          {r.stock_qty === 0 ? "Sin stock" : `⚠ Bajo stock`}
+                        </div>
+                      )}
                     </div>
                     <div>
                       <label className="text-[11px] font-semibold text-zinc-500 uppercase">Precio</label>

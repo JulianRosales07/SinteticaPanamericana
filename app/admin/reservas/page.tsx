@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useCallback } from "react";
+import Link from "next/link";
 import { FiLoader, FiTrash2 } from "react-icons/fi";
 import { createSupabaseBrowserClient } from "../../../lib/supabase/browser";
 import { createWhatsAppUrl } from "../../../lib/whatsapp";
@@ -25,6 +26,7 @@ type ReservationRow = {
   deposit_payment_method?: string | null;
   balance_payment_method?: string | null;
   deposit_percent?: number | null;
+  invoices?: any;
 };
 
 type ProfileRow = { id: string; username: string | null; phone: string | null };
@@ -63,6 +65,7 @@ export default function AdminReservasPage() {
   const [rows, setRows] = useState<ReservationRow[]>([]);
   const [profiles, setProfiles] = useState<Record<string, ProfileRow>>({});
   const [showCancelled, setShowCancelled] = useState(false);
+  const [showEmptyHours, setShowEmptyHours] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reservationToDelete, setReservationToDelete] = useState<string | null>(null);
@@ -92,7 +95,7 @@ export default function AdminReservasPage() {
     const query = supabase
       .from("reservations")
       .select(
-        "id, user_id, court_id, date, hour, price_cop, created_by, status, confirmed, confirmed_at, attended, attended_at, deposit_paid, deposit_cop, deposit_status, deposit_payment_method, balance_payment_method, deposit_percent",
+        "id, user_id, court_id, date, hour, price_cop, created_by, status, confirmed, confirmed_at, attended, attended_at, deposit_paid, deposit_cop, deposit_status, deposit_payment_method, balance_payment_method, deposit_percent, invoices(id, invoice_number)",
       )
       .order("date", { ascending: true })
       .order("hour", { ascending: true });
@@ -160,8 +163,18 @@ export default function AdminReservasPage() {
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showCancelled]);
+
+    const channel = supabase
+      .channel("realtime-admin-reservations")
+      .on("postgres_changes", { event: "*", schema: "public", table: "reservations" }, () => {
+        load();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, load]);
 
   async function updateReservation(id: string, patch: Partial<ReservationRow>) {
     const { error } = await supabase.from("reservations").update(patch).eq("id", id);
@@ -258,7 +271,16 @@ export default function AdminReservasPage() {
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <label className="flex items-center gap-2 text-xs font-semibold text-on-surface-variant bg-white px-3 py-2 rounded-lg border border-outline-variant/30 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showEmptyHours}
+                onChange={(e) => setShowEmptyHours(e.target.checked)}
+                className="rounded border-outline-variant text-primary focus:ring-primary"
+              />
+              Ver horas disponibles
+            </label>
             <label className="flex items-center gap-2 text-xs font-semibold text-on-surface-variant bg-white px-3 py-2 rounded-lg border border-outline-variant/30 cursor-pointer">
               <input
                 type="checkbox"
@@ -370,6 +392,8 @@ export default function AdminReservasPage() {
             onUpdate={updateReservation}
             onDeleteRequest={setReservationToDelete}
             onRenewed={handleRenewedFromPage}
+            showEmptyHours={showEmptyHours}
+            selectedDateStr={selectedDateStr}
           />
           <CourtColumn
             courtId={2}
@@ -378,6 +402,8 @@ export default function AdminReservasPage() {
             onUpdate={updateReservation}
             onDeleteRequest={setReservationToDelete}
             onRenewed={handleRenewedFromPage}
+            showEmptyHours={showEmptyHours}
+            selectedDateStr={selectedDateStr}
           />
         </div>
       )}
@@ -432,6 +458,8 @@ function CourtColumn({
   onUpdate,
   onDeleteRequest,
   onRenewed,
+  showEmptyHours,
+  selectedDateStr,
 }: {
   courtId: number;
   rows: ReservationRow[];
@@ -439,9 +467,29 @@ function CourtColumn({
   onUpdate: (id: string, patch: Partial<ReservationRow>) => void;
   onDeleteRequest: (id: string) => void;
   onRenewed?: (newDate: string, error?: string) => void;
+  showEmptyHours: boolean;
+  selectedDateStr: string;
 }) {
   const accentColor = courtId === 1 ? "border-primary" : "border-tertiary";
   const iconColor = courtId === 1 ? "text-primary" : "text-tertiary";
+  const accentBg = courtId === 1 ? "bg-primary/5 border-primary/20 hover:bg-primary/10" : "bg-tertiary/5 border-tertiary/20 hover:bg-tertiary/10";
+  const accentText = courtId === 1 ? "text-primary" : "text-tertiary";
+
+  // Build a map of reserved hours
+  const reservedHoursMap = useMemo(() => {
+    const map: Record<number, ReservationRow> = {};
+    rows.forEach((r) => { map[r.hour] = r; });
+    return map;
+  }, [rows]);
+
+  // Full schedule: hours 6–23
+  const fullSchedule = useMemo(() => {
+    const schedule: { hour: number; reservation: ReservationRow | null }[] = [];
+    for (let h = 6; h <= 23; h++) {
+      schedule.push({ hour: h, reservation: reservedHoursMap[h] ?? null });
+    }
+    return schedule;
+  }, [reservedHoursMap]);
 
   return (
     <div className="space-y-3">
@@ -453,23 +501,68 @@ function CourtColumn({
         </span>
       </div>
 
-      {rows.length === 0 ? (
-        <div className="border border-dashed border-outline-variant/30 rounded-xl p-6 flex flex-col items-center justify-center bg-white/50 text-center">
-          <span className="material-symbols-outlined text-4xl text-outline-variant/40 mb-2">event_available</span>
-          <p className="text-sm font-semibold text-on-surface-variant">Sin reservas</p>
-          <p className="text-xs text-outline mt-0.5">Cancha {courtId} disponible</p>
+      {showEmptyHours ? (
+        /* ─── 2D Grid Scheduler: Full day view ─── */
+        <div className="space-y-1.5">
+          {fullSchedule.map(({ hour, reservation }) => {
+            if (reservation) {
+              return (
+                <div key={hour} className="flex items-stretch gap-2">
+                  <div className="w-12 shrink-0 flex items-center justify-center text-[11px] font-bold text-on-surface-variant">
+                    {hour}:00
+                  </div>
+                  <div className="flex-1">
+                    <ReservationCard
+                      row={reservation}
+                      profile={profiles[reservation.user_id] ?? null}
+                      onUpdate={onUpdate}
+                      onDeleteRequest={onDeleteRequest}
+                      onRenewed={onRenewed}
+                    />
+                  </div>
+                </div>
+              );
+            }
+            return (
+              <Link
+                key={hour}
+                href={`/admin/ventas?tab=cancha&cancha=${courtId}&date=${selectedDateStr}&hour=${hour}`}
+                className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border border-dashed ${accentBg} transition-all group`}
+              >
+                <span className="w-12 shrink-0 text-[11px] font-bold text-on-surface-variant text-center">
+                  {hour}:00
+                </span>
+                <span className="flex-1 text-xs text-outline font-medium">Disponible</span>
+                <span className={`text-[10px] font-bold ${accentText} opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1`}>
+                  <span className="material-symbols-outlined text-sm">add_circle</span>
+                  Reservar
+                </span>
+              </Link>
+            );
+          })}
         </div>
       ) : (
-        rows.map((r) => (
-          <ReservationCard
-            key={r.id}
-            row={r}
-            profile={profiles[r.user_id] ?? null}
-            onUpdate={onUpdate}
-            onDeleteRequest={onDeleteRequest}
-            onRenewed={onRenewed}
-          />
-        ))
+        /* ─── Classic view: only show existing reservations ─── */
+        <>
+          {rows.length === 0 ? (
+            <div className="border border-dashed border-outline-variant/30 rounded-xl p-6 flex flex-col items-center justify-center bg-white/50 text-center">
+              <span className="material-symbols-outlined text-4xl text-outline-variant/40 mb-2">event_available</span>
+              <p className="text-sm font-semibold text-on-surface-variant">Sin reservas</p>
+              <p className="text-xs text-outline mt-0.5">Cancha {courtId} disponible</p>
+            </div>
+          ) : (
+            rows.map((r) => (
+              <ReservationCard
+                key={r.id}
+                row={r}
+                profile={profiles[r.user_id] ?? null}
+                onUpdate={onUpdate}
+                onDeleteRequest={onDeleteRequest}
+                onRenewed={onRenewed}
+              />
+            ))
+          )}
+        </>
       )}
     </div>
   );
@@ -530,6 +623,7 @@ function ReservationCard({
   const isAttended = Boolean(r.attended);
   const depositPaid = Boolean(r.deposit_paid);
   const depositValue = r.deposit_cop ?? 0;
+  const invoice = Array.isArray(r.invoices) ? r.invoices[0] : r.invoices;
   const pending = r.price_cop - depositValue;
   const depPercent = r.deposit_percent ?? 30;
 
@@ -709,6 +803,15 @@ Saldo Restante a pagar en taquilla: ${formatCOP(r.price_cop - (r.deposit_cop ?? 
               >
                 Asistió
               </button>
+            )}
+            {invoice && (
+              <Link
+                href={`/facturas/${invoice.id}`}
+                className="flex-1 min-w-[60px] flex items-center justify-center gap-1 py-1.5 border border-outline-variant/60 text-on-surface-variant hover:bg-surface-container rounded-lg text-[11px] font-bold transition-all"
+              >
+                <span className="material-symbols-outlined text-[14px]">receipt_long</span>
+                Ver Factura
+              </Link>
             )}
             <a
               href={whatsappUrl ?? "#"}
