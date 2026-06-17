@@ -14,6 +14,7 @@ function cn(...classes: Array<string | false | null | undefined>) {
 const adminLinks = [
   { href: "/admin", label: "Inicio" },
   { href: "/admin/reservas", label: "Reservas" },
+  { href: "/admin/calendario", label: "Calendario" },
   { href: "/admin/facturas", label: "Facturas" },
   { href: "/admin/precios", label: "Precios/Canchas" },
   { href: "/admin/usuarios", label: "Usuarios" },

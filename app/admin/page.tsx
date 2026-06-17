@@ -76,6 +76,13 @@ const modules = [
     icon: "analytics",
     color: "bg-violet-600",
   },
+  {
+    title: "Sincronizar Calendario",
+    desc: "Vincular con Google Calendar / Celular",
+    href: "/admin/calendario",
+    icon: "sync",
+    color: "bg-emerald-600",
+  },
 ];
 
 export default function AdminHomePage() {
